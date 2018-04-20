@@ -12,13 +12,14 @@ def cluster_primer_seqs(primer_file):
       """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer; """
       """ i=$(($i+1)); done < {primerfile} > {primerfile}.fasta; """.format(primerfile=primer_file)
       )
-   subprocess.check_call(cmd1)
+   print cmd1
+   subprocess.check_call(cmd1,shell=True)
    # run cd-hit
-   cmd = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
+   cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
       primerfile=primer_file)
-   subprocess.check_call(cmd)
+   subprocess.check_call(cmd2,shell=True)
    # parse output to usable format
-   parse_cdhit(primer_file,primer_file+'.clusters.temp',primer_file+'.clusters')
+   parse_cdhit(primer_file,primer_file+'.clusters.temp.clstr',primer_file+'.clusters')
 
 
 def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
@@ -31,7 +32,7 @@ def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
     i=0
     with open(primer_file,'r') as IN:
         for line in IN:
-            primers.append(line.strip('\n'))
+            primers.append(line.strip('\n').split('\t')[-1])
 
     cluster_info = defaultdict(list)
     with open(cdhit_out,'r') as IN:
@@ -48,3 +49,7 @@ def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
         for cluster in cluster_info:
             if len(cluster_info[cluster]) > 1:
                 OUT.write(','.join(cluster_info[cluster])+'\n')
+
+
+if __name__ == '__main__':
+   cluster_primer_seqs("Primers.bed")

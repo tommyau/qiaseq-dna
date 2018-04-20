@@ -16,12 +16,13 @@ To do :
 4.) Pickle output from create_primer_search_datastruct , load this result in the main function
 '''
 
-def create_primer_search_datastruct(primer_file):
+def create_primer_search_datastruct(primer_file,primer_file_clusters):
     ''' Create datastructures used for searching primers 
     Overlapping 8-mer index for each primer
     Information for each primer including closely clustered primers from cd-hit
 
     :param str primer_file: The PrimerFile for this readset
+    :param str primer_file_clusters : The Clustering output from cd-hit
     :rtype a tuple of : (defaultdict(set),defaultdict(list),dict)
     '''
     primer_kmer = collections.defaultdict(set)    
@@ -48,7 +49,7 @@ def create_primer_search_datastruct(primer_file):
             primers_cutadapt[primer] = cutadapt.adapters.Adapter(sequence=revcomp,where=cutadapt.adapters.BACK,max_error_rate=0.1,min_overlap=3)
             
     # add close primer sequences for each primer based on cdhit results
-    with open('/home/qiauser/clustering/primers.clustered.txt','r') as IN:
+    with open(primer_file_clusters,'r') as IN:
         for line in IN:
             temp = line.strip('\n').split(',')            
             for p1,p2 in itertools.product(temp, repeat=2):
@@ -120,7 +121,7 @@ def iterate_fastq(R1_fastq,R2_fastq):
 
 
   
-def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_3_bases,primer_tag_name,primer_err_tag_name):
+def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clusters,primer_3_bases,primer_tag_name,primer_err_tag_name):
     ''' Main function
     :param str R1_fastq: Path to Input R1 fastq file
     :param str R2_fastq: Path to Input R2 fastq file
@@ -138,7 +139,7 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_3_bases,
     trimmed_R2= 0
 
     # primer search datastruct
-    primer_datastruct = create_primer_search_datastruct(primer_file)
+    primer_datastruct = create_primer_search_datastruct(primer_file,primer_file_clusters)
 
     batch = os.path.basename(R1_fastq).split(".")[2]    
     primer_trimming_info = os.path.join(os.path.dirname(R1_fastq_out),"trimming_info.{}.txt".format(batch))
