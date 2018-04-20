@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 from collections import defaultdict
 
 def cluster_primer_seqs(primer_file):

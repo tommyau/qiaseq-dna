@@ -161,7 +161,7 @@ def run(cfg):
    primerFastaOut.close()
    
    # run cd-hit to cluster close primer sequences
-   cdhit.cluster_primer_seqs()
+   cdhit.cluster_primer_seqs(primerFile)
    
    # set up trimming work to be run in parallel sub-processes, using another python script
    workIn = []
