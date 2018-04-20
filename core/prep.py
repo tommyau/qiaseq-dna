@@ -6,6 +6,9 @@ import math
 import subprocess
 from multiprocessing.dummy import Pool as ThreadPool
 
+# our modules
+import cdhit
+
 #-------------------------------------------------------------------------------------
 def worker(cmd):
    try:
@@ -73,8 +76,8 @@ def splitReadFile(readFile,filePrefixOut,readSide,numBatchesMax,deleteLocalFiles
       os.remove(readFile)
    
    # done
-   return numReads, numBatches
-
+   return numReads, numBatches  
+   
 #-------------------------------------------------------------------------------------
 def run(cfg):
    # report start
@@ -156,12 +159,15 @@ def run(cfg):
       primerStrand = "0" if direction == "L" or direction == "0" else "1"
       primerFastaOut.write(">" + "-".join((chrom, direction, loc3)) + "\n" + "^" + primer + "\n")
    primerFastaOut.close()
-      
+   
+   # run cd-hit to cluster close primer sequences
+   cdhit.cluster_primer_seqs()
+   
    # set up trimming work to be run in parallel sub-processes, using another python script
    workIn = []
    for batchNum in range(numBatches):
       filePrefixBatch = "{}.{:04d}".format(filePrefixOut,batchNum)
-      cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} > {7}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primerFasta,primer3Bases,filePrefixBatch)
+      cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} {8} > {7}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primerFasta,primer3Bases,filePrefixBatch,primerFile)
       workIn.append(cmd)
       
    # run cutadapt and UMI extraction in parallel sub-processes
