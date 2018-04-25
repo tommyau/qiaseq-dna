@@ -106,7 +106,7 @@ In the tumor read set section :
 
 Set ***runCNV*** = True , for obtaining copy number estimates.
 
-Also add a new parameter, ***refUmiFiles*** = /your/run_dir/<normal>.sum.primer.umis.txt ; where <normal> is the read set name for your normal sample.
+Also add a new parameter, ***refUmiFiles*** = /your/run_dir/{normal_readset}.sum.primer.umis.txt ; where {normal_readset} is the name for your normal sample.
   
 You may also give a comma delimited string with the paths to multiple sum.primer.umis.txt files for the CNV normalization.
 
