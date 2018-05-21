@@ -4,22 +4,22 @@ import subprocess
 from collections import defaultdict
 
 def cluster_primer_seqs(primer_file):
-   ''' Cluster similar primer sequences for use later in primer trimming 
-   :param str primerFile: Path to the primerfile for this readset 
-   '''
-   # create a fasta of the primers
-   cmd1 = (
-      """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer; """
-      """ i=$(($i+1)); done < {primerfile} > {primerfile}.fasta; """.format(primerfile=primer_file)
-      )
-   print cmd1
-   subprocess.check_call(cmd1,shell=True)
-   # run cd-hit
-   cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
-      primerfile=primer_file)
-   subprocess.check_call(cmd2,shell=True)
-   # parse output to usable format
-   parse_cdhit(primer_file,primer_file+'.clusters.temp.clstr',primer_file+'.clusters')
+    ''' Cluster similar primer sequences for use later in primer trimming
+    :param str primerFile: Path to the primerfile for this readset
+    '''
+    # create a fasta of the primers
+    cmd1 = (
+       """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer; """
+       """ i=$(($i+1)); done < {primerfile} > {primerfile}.fasta; """.format(primerfile=primer_file)
+       )
+    print cmd1
+    subprocess.check_call(cmd1,shell=True)
+    # run cd-hit
+    cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
+       primerfile=primer_file)
+    subprocess.check_call(cmd2,shell=True)
+    # parse output to usable format
+    parse_cdhit(primer_file,primer_file+'.clusters.temp.clstr',primer_file+'.clusters')
 
 
 def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
@@ -44,7 +44,7 @@ def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
                 temp = line.strip('\n').split('\t')[1].split(',')[1].strip().split('...')[0].strip('>')
                 primer = primers[int(temp)]
                 cluster_info[str(cluster_num)].append(primer)
-                
+
     with open(simple_cdhit_out,'w') as OUT:
         for cluster in cluster_info:
             if len(cluster_info[cluster]) > 1:
@@ -52,4 +52,4 @@ def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
 
 
 if __name__ == '__main__':
-   cluster_primer_seqs("Primers.bed")
+    cluster_primer_seqs("Primers.bed")

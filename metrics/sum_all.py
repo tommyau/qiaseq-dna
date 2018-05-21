@@ -24,5 +24,3 @@ def run(cfg):
             if os.path.isfile(fileName):
                 for line in open(fileName):
                     OUT.write(line)
-        
-    
