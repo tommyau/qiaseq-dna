@@ -6,7 +6,7 @@ import core.run_log
 import core.run_config
 import core.prep
 import core.align
-import core.dedup
+import misc.dedup
 
 #--------------------------------------------------------------------------------------
 # trim common regions, align to genome, remove PCR duplicates

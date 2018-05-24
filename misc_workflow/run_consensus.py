@@ -10,7 +10,7 @@ import core.umi_filter
 import core.umi_mark
 import core.umi_merge
 import core.primer_clip
-import core.consensus
+import misc.consensus
 import core.samtools
 
 #--------------------------------------------------------------------------------------
