@@ -35,21 +35,17 @@ def run(args):
  
     # read run configuration file to memory
     cfg = core.run_config.run(readSet,paramFile)
- 
-    if cfg.platform.lower() == "illumina":
- 
-        if cfg.duplex.lower() == "true": ## Duplex sequencing run
-            core.prep_trim_duplex.trimDuplex(cfg)
-        else:
-            # trim 3' ends of both reads, and extract UMI sequence
-            core.prep.run(cfg)
-      
+
+    # trim adapters , umi and primers (this module spawns multiple processes)
+    core.prep.run(cfg)
+    
+    if cfg.platform.lower() == "illumina"  
         # align trimmed reads to genome using BWA MEM
         readFileIn1 = readSet + ".prep.R1.fastq"
         readFileIn2 = readSet + ".prep.R2.fastq"
         bamFileOut  = readSet + ".align.bam"
         core.align.run(cfg, readFileIn1, readFileIn2, bamFileOut)
-    else:
+    else: # use tmap for ion torrent reads
         misc.process_ion.trimIon(cfg)
         misc.process_ion.alignToGenomeIon(cfg)
   

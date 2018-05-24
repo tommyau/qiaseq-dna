@@ -5,44 +5,51 @@ import socket
 import string
 import copy
 
-import pysam # only really needed for Ion runs
+import pysam
 
+#-------------------------------------------------------------------------------------
+def trim_iontorrent(filePrefix,cutadaptDir,tagNameUmiSeq):
+    ''' Trim and tag synthetic regions from QIASeq Dna IonTorrent Reads
+    Please note that this function is tied to the core/prep.py and core/prep_trim.py modules
+    The input and output files are split and merged in those modules.
 
-
-#-------------------------------------------------------------------------------------------------------
-# Ion single-end reads - trim barcode and adapters, drop reads not full length
-#-------------------------------------------------------------------------------------------------------
-def trimIon(cfg):
-    # get params
-    readSet = cfg.readSet
-    readFile1 = cfg.readFile1
-    cutadaptDir = cfg.cutadaptDir
+    :param str filePrefix: The readSet name
+    :param str cutadaptDir: Path to cutadapt executable directory
+    :param str tagNameUmiSeq: Tag name for UMI sequence in the SAM/BAM file
+    :returns final trimmed R1 and R2 fastq file paths
+    :rtype tuple (R1_fastq,R2_fastq)
+    '''
+    # split read set name from input file directory (NOTE: ".R1.fastq" and ".R2.fastq" are required file suffixes here!)
+    dirIn, filePrefix = os.path.split(filePrefix)
+    if len(dirIn) > 0:
+        dirIn = dirIn + "/"
 
     # look for universal seq at 3' end of read, drop read if not found (these are long fragments)
     cmd = cutadaptDir + "cutadapt -e 0.18 -O 17 --discard-untrimmed " \
         + "-a CAAAACGCAATACTGTACATT -n 1 " \
-        + "--info-file " + readSet + ".cutadapt.3.R1.txt " \
-        + "-o " + readSet + ".temp1.R1.fastq " \
-        + readFile1 \
-        + " > " + readSet + ".cutadapt.3.R1.log 2>&1 "
+        + "--info-file " + filePrefix + ".cutadapt.3.R1.txt " \
+        + "-o " + filePrefix + ".temp0.R1.fastq " \
+        + dirIn + filePrefix + readFile1 \
+        + " > " + filePrefix + ".cutadapt.3.R1.log 2>&1 "
     subprocess.check_call(cmd, shell=True)
 
     # read original read count from cutadapt log
     numReadsTotal = None
-    for line in open(readSet + ".cutadapt.3.R1.log","r"):
+    for line in open(filePrefix + ".cutadapt.3.R1.log","r"):
         if line.startswith("Total reads processed:"):
             (key,val) = line.strip().split(":")
             numReadsTotal = int(val.strip().replace(",",""))
             break
+    os.remove(filePrefix + ".cutadapt.3.R1.log")
 
     # pull first 12 bp off, move to header
-    fileout = open(readSet + ".temp0.R1.fastq","w")
-    fileoutTag = open(readSet + ".umi.tag.txt","w")
+    fileout = open(filePrefix + ".temp1.R1.fastq","w")
+    fileoutTag = open(filePrefix + ".umi.tag.txt","w")
     numReadsWithAdapter3 = 0
     numReadsDroppedTooShort = 0
     lines = []
     lineIdx = 0
-    for line in open(readSet + ".temp1.R1.fastq","r"):
+    for line in open(filePrefix + ".temp0.R1.fastq","r"):
         lines.append(line.strip())
         lineIdx += 1
 
@@ -63,14 +70,14 @@ def trimIon(cfg):
             lines[1] = lines[1][12:]
             lines[3] = lines[3][12:]
 
-            # not adding umi to read id, will add as tag to aligned bam
+            # not adding umi to read id as tmap cannot add bam tags from read id comment
             line = lines[0]
 
             # write output fastq
             for i in range(4):
                 fileout.write(lines[i] + "\n")
 
-            # write tags for adding to bam later
+            # write umi to file, add as tag to bam later
             fileoutTag.write(lines[0]+"\t"+barcode+"\t"+barcodeQ+"\n")
 
             # clear for next read
@@ -78,33 +85,28 @@ def trimIon(cfg):
     fileout.close()
     numReadsDroppedNoAdapter3 = numReadsTotal - numReadsWithAdapter3
 
-    # done with temp1 file
-    os.remove(readSet + ".temp1.R1.fastq")
-
     # trim 11-mer universal adapter from 5' end
     cmd = cutadaptDir + "cutadapt -e 0.18 -O 9 --discard-untrimmed " \
         + "-g ^ATTGGAGTCCT -n 1 " \
-        + "--info-file " + readSet + ".cutadapt.5.R1.txt " \
-        + "-o " + readSet + ".trimmed.R1.fastq " \
-        + readSet + ".temp0.R1.fastq" \
-        + " > " + readSet + ".cutadapt.5.R1.log 2>&1 "
+        + "--info-file " + filePrefix + ".cutadapt.5.R1.txt " \
+        + "-o " + filePrefix + ".temp2.R1.fastq " \
+        + filePrefix + ".temp1.R1.fastq" \
+        + " > " + filePrefix + ".cutadapt.5.R1.log 2>&1 "
     subprocess.check_call(cmd, shell=True)
-
-    # done with temp0 file
-    os.remove(readSet + ".temp0.R1.fastq")
 
     # get read count from cutadapt log
     numReadsFinal = 0
-    for line in open(readSet + ".cutadapt.5.R1.log","r"):
+    for line in open(filePrefix + ".cutadapt.5.R1.log","r"):
         if line.startswith("Reads with adapters:"):
             (key,val) = line.strip().split(":")
             (val,foo) = val.split("(")
             numReadsFinal = int(val.strip().replace(",",""))
             break
     numReadsDroppedNoAdapter5 = numReadsTotal - numReadsDroppedNoAdapter3 - numReadsDroppedTooShort - numReadsFinal
+    os.remove(filePrefix + ".cutadapt.5.R1.log")
 
     # write summary file
-    fileout = open(readSet + ".align.summary.txt", "w")
+    fileout = open(filePrefix + ".align.summary.txt", "w")
     fileout.write("{}\tread fragments total\n".format(numReadsTotal))
     fileout.write("{}\tread fragments dropped, not full-length\n".format(numReadsDroppedNoAdapter3))
     fileout.write("{}\tread fragments dropped, less than 40 bp\n".format(numReadsDroppedTooShort))
@@ -114,11 +116,10 @@ def trimIon(cfg):
     # set up reverse comlement
     dnaComplementTranslation = string.maketrans("ATGC", "TACG")
 
-
     # make fake R2 (primer side) file
-    fileout = open(readSet + ".trimmed.R2.fastq", "w")
+    fileout = open(filePrefix + ".temp2.R2.fastq", "w")
     lineIdx = 0
-    for line in open(readSet + ".trimmed.R1.fastq", "r"):
+    for line in open(filePrefix + ".temp2.R1.fastq", "r"):
         line = line.strip()
         if lineIdx == 0 or lineIdx == 2:
             fileout.write(line)
@@ -133,6 +134,8 @@ def trimIon(cfg):
         if lineIdx == 4:
             lineIdx = 0
     fileout.close()
+
+    return (filePrefix + ".temp2.R1.fastq",filePrefix + ".temp2.R2.fastq")
 
 #-------------------------------------------------------------------------------------------------------
 # Ion single-end reads - align single-end FASTQ using TMAP
@@ -205,7 +208,6 @@ def alignToGenomeIon(cfg):
     # make BAM index for IGV
     cmd = samtoolsDir + "samtools index " + readSet + ".align.sorted.bam "
     subprocess.check_call(cmd, shell=True)
-
 
 def add_bam_tags(bamIn,bamOut,readSet):
     ''' Add tags to bam

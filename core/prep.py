@@ -7,7 +7,7 @@ import subprocess
 from multiprocessing.dummy import Pool as ThreadPool
 
 # our modules
-import cdhit
+import primer_trim
 
 #-------------------------------------------------------------------------------------
 def worker(cmd):
@@ -96,78 +96,78 @@ def run(cfg):
     tagNamePrimerErr = cfg.tagNamePrimerErr
     primerFile       = cfg.primerFile
     primer3Bases     = int(cfg.primer3Bases)
+    platform = cfg.platform
     
+    # debug check
+    if cfg.readFile1 == cfg.readFile2:
+        raise UserWarning("R1 and R2 have the same filename. Please fix the file paths for the input files.")
+
+    # set sequencing type for trimming
+    if cfg.platform.lower() == "illumina": 
+        if cfg.duplex.lower() == "true": ## Duplex sequencing run
+            cfg.seqtype = "illumina_duplex"
+        else:
+            cfg.seqtype = "illumina"
+    else:
+        cfg.seqtype = "iontorrent"
+
     # set output file prefix
     filePrefixOut = readSet + ".prep"
     
     # check for adapter on primer side - customer forgot to use the custom sequencing primer, or are a small part of a large HiSeq run
-    if readFile1.endswith(".fastq"):  
-        cmd = "head -n 4000 " + readFile1 + " > " 
-    else:
-        cmd = "zcat " + readFile1 + " | head -n 4000 > " 
-    cmd += filePrefixOut + ".temp1000.R1.fastq"
-    subprocess.check_call(cmd, shell=True)
-    cmd = cutadaptDir + "cutadapt -e 0.18 -O 18" \
-        + " -g ^AATGTACAGTATTGCGTTTTG -n 1" \
-        + " -o /dev/null " \
-        +         filePrefixOut + ".temp1000.R1.fastq" \
-        + " > " + filePrefixOut + ".cutadapt.5.R1.log 2>&1"
-    subprocess.check_call(cmd, shell=True)
-    os.remove(filePrefixOut + ".temp1000.R1.fastq")
-    pctWithAdapter = None
-    for line in open(filePrefixOut + ".cutadapt.5.R1.log", "r"):
-        if line.startswith("Reads with adapters:"):
-            idx1 = line.find("(")
-            idx2 = line.find("%)")
-            pctWithAdapter = float(line[idx1+1:idx2])
-            break
-    print("prep: check for wrong sequencing primer using first 1,000 reads: % wrong is {}".format(pctWithAdapter))
-    if pctWithAdapter > 95.0:
-        print("WARNING: R1 reads start with PCR adapter - custom sequencing primer was not used on primer side!")
+    if cfg.platform.lower() == "illumina":
+        if readFile1.endswith(".fastq"):  
+            cmd = "head -n 4000 " + readFile1 + " > " 
+        else:
+            cmd = "zcat " + readFile1 + " | head -n 4000 > " 
+        cmd += filePrefixOut + ".temp1000.R1.fastq"
+        subprocess.check_call(cmd, shell=True)
         cmd = cutadaptDir + "cutadapt -e 0.18 -O 18" \
             + " -g ^AATGTACAGTATTGCGTTTTG -n 1" \
-            + " -o " + filePrefixOut + ".fixed.R1.fastq " \
-                     + readFile1  \
-            + " > "  + filePrefixOut + ".cutadapt.5.R1.log 2>&1"
+            + " -o /dev/null " \
+            +         filePrefixOut + ".temp1000.R1.fastq" \
+            + " > " + filePrefixOut + ".cutadapt.5.R1.log 2>&1"
         subprocess.check_call(cmd, shell=True)
-        readFile1 = filePrefixOut + ".fixed.R1.fastq"
+        os.remove(filePrefixOut + ".temp1000.R1.fastq")
+        pctWithAdapter = None
+        for line in open(filePrefixOut + ".cutadapt.5.R1.log", "r"):
+            if line.startswith("Reads with adapters:"):
+                idx1 = line.find("(")
+                idx2 = line.find("%)")
+                pctWithAdapter = float(line[idx1+1:idx2])
+                break
+        print("prep: check for wrong sequencing primer using first 1,000 reads: % wrong is {}".format(pctWithAdapter))
+        if pctWithAdapter > 95.0:
+            print("WARNING: R1 reads start with PCR adapter - custom sequencing primer was not used on primer side!")
+            cmd = cutadaptDir + "cutadapt -e 0.18 -O 18" \
+                + " -g ^AATGTACAGTATTGCGTTTTG -n 1" \
+                + " -o " + filePrefixOut + ".fixed.R1.fastq " \
+                         + readFile1  \
+                + " > "  + filePrefixOut + ".cutadapt.5.R1.log 2>&1"
+            subprocess.check_call(cmd, shell=True)
+            readFile1 = filePrefixOut + ".fixed.R1.fastq"
      
     # split both read files into chunks to be processed in parallel
     numReads1, numBatches = splitReadFile(readFile1,filePrefixOut,"R1",numCores,deleteLocalFiles)
-    numReads2, numBatches = splitReadFile(readFile2,filePrefixOut,"R2",numCores,deleteLocalFiles)
-    
-    # debug check
-    if numReads2 != numReads1:
-        raise UserWarning("prep: R1 and R2 read count not equal!")
-        
+    if cfg.platform.lower() == "illumina": # ion-torrent reads are single end
+        numReads2, numBatches = splitReadFile(readFile2,filePrefixOut,"R2",numCores,deleteLocalFiles)    
+        # debug check
+        if numReads2 != numReads1:
+            raise UserWarning("prep: R1 and R2 read count not equal!")        
     # debug check
     if numReads1 == 0:
-        raise UserWarning("prep: input read files are empty!")
-  
-    # make primer fasta for primer search
-    primerSeqs = []
-    primerFasta = "prep.primer.fa"
-    primerFastaOut = open(primerFasta, "w")
-    for line in open(primerFile, "r"):      
-        (chrom, loc3, direction, primer) = line.strip().split("\t")
-        
-        # debug check (need to modify code to handle same primer for multiple design loci)
-        if primer in primerSeqs:
-            raise Exception("ERROR: duplicate primer specification! " + primer)     
-        primerSeqs.append(primer)
-  
-        primerStrand = "0" if direction == "L" or direction == "0" else "1"
-        primerFastaOut.write(">" + "-".join((chrom, direction, loc3)) + "\n" + "^" + primer + "\n")
-    primerFastaOut.close()
-    
-    # run cd-hit to cluster close primer sequences
-    cdhit.cluster_primer_seqs(primerFile)
+        raise UserWarning("prep: input read files are empty!")  
+   
+    # run cd-hit to cluster close primer sequences; creates the file {primerFile}.clusters
+    primer_trim.cluster_primer_seqs(primerFile)
+    # cache primer search datastructure to avoid repeated compute over batches; creates the file {primerFile}.kmer.cache
+    primer_trim.create_primer_search_datastruct(primerFile,primerFile+'.clusters',cache=True,cache_file=primerFile+".kmer.cache")
     
     # set up trimming work to be run in parallel sub-processes, using another python script
     workIn = []
     for batchNum in range(numBatches):
         filePrefixBatch = "{}.{:04d}".format(filePrefixOut,batchNum)
-        cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} {8} > {7}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primerFasta,primer3Bases,filePrefixBatch,primerFile)
+        cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} {8} > {7}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,filePrefixBatch,primerFile,seqtype)
         workIn.append(cmd)
         
     # run cutadapt and UMI extraction in parallel sub-processes
@@ -201,10 +201,22 @@ def run(cfg):
     # concatenate the log files - note dangerous wildcards here!
     logFileOut = open(filePrefixOut + ".log","w")
     for logFileIn in glob.glob(filePrefixOut + ".0*.log"):
-        for line in open(logFileIn,"r"):
-            logFileOut.write(line)
+        IN = open(logFileIn,"r")
+        logFileOut.write(IN.read())
+        IN.close()
         os.remove(logFileIn)
-        
+        logFileOut.close()
+
+    # For ion-torrent reads concatenate the umi tag files        
+    if seqtype == 'iontorrent':
+        OUT = open(readSet + ".umi.tag.txt","w")
+        for umiTagFileTemp in glob.glob(filePrefixOut + "*.umi.tag.txt"):
+            IN =  open(umiTagFileTemp,"r")
+            OUT.write(IN.read()) # reading into memory
+            IN.close()
+            os.remove(umiTagFileTemp)
+        OUT.close()
+
     # aggregate summary read count files - for some trim scripts these files contain important read count metrics
     output = []
     firstFile = True
@@ -232,6 +244,7 @@ def run(cfg):
 #-------------------------------------------------------------------------------------
 if __name__ == "__main__":
     cfg = lambda:0
+    cfg.platform = "illumina"
     cfg.readSet = "NEB_S2"
     cfg.readFile1 = "/mnt/webserver/datadisk/resources/jdicarlo/NEB_S2_L001_R1_001.fastq.gz"
     cfg.readFile2 = "/mnt/webserver/datadisk/resources/jdicarlo/NEB_S2_L001_R2_001.fastq.gz"
@@ -239,5 +252,5 @@ if __name__ == "__main__":
     cfg.trimScript  = "prep_trim.py"
     cfg.numCores  = "32"
     cfg.deleteLocalFiles = True
-    cfg.primer3Bases = -1   
+    cfg.primer3Bases = -1
     run(cfg)
