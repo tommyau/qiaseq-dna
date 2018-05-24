@@ -1,10 +1,12 @@
 import os
+import subprocess
 import sys
 import collections
 import itertools
 import edlib
 import cutadapt.adapters
 import time
+import cPickle as pickle
 # our modules
 from umi_filter import reverseComplement
 
@@ -13,17 +15,66 @@ To do :
 1.) Add Proper Command Line Parser
 2.) Output some metrics like num_bases trimmed, num_reads trimmed etc.
 3.) Add parameterization for k-mer index, min error rate, etc.
-4.) Pickle output from create_primer_search_datastruct , load this result in the main function
 '''
 
-def create_primer_search_datastruct(primer_file,primer_file_clusters):
+def cluster_primer_seqs(primer_file):
+    ''' Cluster similar primer sequences for use later in primer trimming
+    :param str primerFile: Path to the primerfile for this readset
+    '''
+    # create a fasta of the primers
+    cmd1 = (
+       """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer; """
+       """ i=$(($i+1)); done < {primerfile} > {primerfile}.fasta; """.format(primerfile=primer_file)
+       )
+    print cmd1
+    subprocess.check_call(cmd1,shell=True)
+    # run cd-hit
+    cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
+       primerfile=primer_file)
+    subprocess.check_call(cmd2,shell=True)
+    # parse output to usable format
+    parse_cdhit(primer_file,primer_file+'.clusters.temp.clstr',primer_file+'.clusters')
+
+
+def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
+    ''' Parse cd-hit output to usabel format
+    :param str primer_file: Path to the the primerfile for this readset
+    :param str cdhit_out: Path to output file from cd-hit
+    :param str simple_cdhit_out: Path to write the parsed results to
+    '''
+    primers = []
+    i=0
+    with open(primer_file,'r') as IN:
+        for line in IN:
+            primers.append(line.strip('\n').split('\t')[-1])
+
+    cluster_info = collections.defaultdict(list)
+    with open(cdhit_out,'r') as IN:
+        for line in IN:
+            if line.startswith('>'):
+                cluster_num = int(line.strip('\n').split(' ')[1])
+                new_cluster = True
+            else:
+                temp = line.strip('\n').split('\t')[1].split(',')[1].strip().split('...')[0].strip('>')
+                primer = primers[int(temp)]
+                cluster_info[str(cluster_num)].append(primer)
+
+    with open(simple_cdhit_out,'w') as OUT:
+        for cluster in cluster_info:
+            if len(cluster_info[cluster]) > 1:
+                OUT.write(','.join(cluster_info[cluster])+'\n')
+
+
+def create_primer_search_datastruct(primer_file,primer_file_clusters,cache=False,cache_file=None):
     ''' Create datastructures used for searching primers
     Overlapping 8-mer index for each primer
     Information for each primer including closely clustered primers from cd-hit
 
     :param str primer_file: The PrimerFile for this readset
     :param str primer_file_clusters : The Clustering output from cd-hit
-    :rtype a tuple of : (defaultdict(set),defaultdict(list),dict)
+    :param bool cache: Whether to cache the results to a file
+    :param str cache_file: If cache is True , file path to cache to
+    :rtype If cache is False, a tuple of : (defaultdict(set),defaultdict(list),dict)
     '''
     primer_kmer = collections.defaultdict(set)
     primers = collections.defaultdict(list)
@@ -56,8 +107,11 @@ def create_primer_search_datastruct(primer_file,primer_file_clusters):
                 assert p1 in primers and p2 in primers,"Primer(s) from cd-hit not in PrimerFile !!!"
                 primers[p1][-1].append(p2)
                 primers[p2][-1].append(p1)
-
-    return (primer_kmer,primers,primers_cutadapt)
+    if cache:
+        with open(cache_file,"wb") as OUT:
+            pickle.dumps((primer_kmer,primers,primers_cutadapt),OUT)
+    else:
+        return (primer_kmer,primers,primers_cutadapt)
 
 def trim_primer(primer_datastruct,R1):
     ''' Trim appropriate Primer from the R1 read
@@ -121,7 +175,7 @@ def iterate_fastq(R1_fastq,R2_fastq):
 
 
 
-def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clusters,primer_3_bases,primer_tag_name,primer_err_tag_name):
+def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clusters,primer_3_bases,primer_tag_name,primer_err_tag_name,load_cache=False,cache_file=None):
     ''' Main function
     :param str R1_fastq: Path to Input R1 fastq file
     :param str R2_fastq: Path to Input R2 fastq file
@@ -132,6 +186,8 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     :param int primer_3_bases: Number of bases to keep on the 3' end of the primers
     :param str primer_tag_name: Tag name for storing the primer in the bam/sam file
     :param str primer_err_tag_name: Tag Name for storing the edit distance of the primer match in the bam/sam file
+    :param bool load_cache: Whether to load the primer search datastructure (useful when splitting a fastq and running in parallel)
+    :param str cache_file: If load_cache is True, file path to load(pickle) from
     '''
     # counters
     num_R1=0
@@ -139,11 +195,11 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     trimmed_R2= 0
 
     # primer search datastruct
-    primer_datastruct = create_primer_search_datastruct(primer_file,primer_file_clusters)
-
-    batch = os.path.basename(R1_fastq).split(".")[2]
-    primer_trimming_info = os.path.join(os.path.dirname(R1_fastq_out),"trimming_info.{}.txt".format(batch))
-
+    if load_cache:
+        with open(cache_file,"rb") as IN:
+            primer_datastruct = pickle.load(IN)
+    else:
+        primer_datastruct = create_primer_search_datastruct(primer_file,primer_file_clusters,cache=False)
     primer_kmer,primers,primers_cutadapt = primer_datastruct
 
     def reformat_readid(read_id,primer_info,primer_err):
