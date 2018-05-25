@@ -51,7 +51,6 @@ def run(cfg,bamFileIn):
     maxSoftClipBp1   = min(primer3Bases + 4, 20) if primer3Bases != -1 else 20      # 16 + 4 = 20
     tagNamePrimer    = cfg.tagNamePrimer
     tagNamePrimerErr = cfg.tagNamePrimerErr
-    minMapqDrop = float(cfg.minMapqDrop)
  
     # set output file prefix
     filePrefixOut = readSet + ".umi_filter"
@@ -151,7 +150,7 @@ def run(cfg,bamFileIn):
             continue
                
         # drop read pair if R1 or R2 read has low mapq 
-        if read2.mapq < minMapqDrop or read1.mapq < minMapqDrop:
+        if read2.mapq < 17 or read1.mapq < 17:
             readPairCounts[NUM_LOW_MAPQ] += 1
             continue
    
