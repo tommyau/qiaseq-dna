@@ -71,7 +71,7 @@ def run(args):
     # sort the final BAM file, to prepare for downstream variant calling
     bamFileIn  = readSet + ".primer_clip.bam"
     bamFileOut = readSet + ".bam"
-    #core.samtools.sort(cfg,bamFileIn,bamFileOut)   
+    core.samtools.sort(cfg,bamFileIn,bamFileOut)   
    
     if cfg.duplex.lower() == "false": # do not run smCounter for duplex reads
  
