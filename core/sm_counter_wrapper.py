@@ -56,16 +56,25 @@ def run(cfg, paramFile, vc):
     if vc == 'v1':
         cfgSmCounter["mtDepth"] = cfg.umiDepthMean # this comes from metrics.umi_depths module   
         # run smCounter variant caller
-        smCounterThreshold = sm_counter_v1.sm_counter.main(cfgSmCounter)      
+        smCounterThreshold = sm_counter_v1.sm_counter.main(cfgSmCounter)
+        # create low PI file for v1
+        makeLowPIFile(readSet,smCounterThreshold)
     else:
         cfgSmCounter["runPath"] = os.getcwd()
         sm_counter_v2.sm_counter_v2.main(cfgSmCounter)
         smCounterThreshold = 6
-  
-    # create low PI file for v1
-    if vc == 'v1':
-        makeLowPIFile(readSet,smCounterThreshold)
-     
+        # need to add the lod quantiles output from smCounter-v2 to umi_depths.summary file
+        fileoutSummary = open(readSet + ".umi_depths.summary.txt","a")
+        with open(readSet + ".umi_depths.lod.bedgraph.quantiles.txt","r") as IN:
+            for line in IN:
+                (metricName, metricVal) = line.strip().split("|")
+                metricName = int(metricName,replace("%",""))
+                metricVal = float(metricVal)
+                thorst = "st" if metricName == 1 else "th"
+                fileoutSummary.write("{:6.4f}\t{:2d}{} percentile estimated minimum detectible allele fraction (LOD)\n".format(metricVal, metricName,thorst))
+                # remove the temporary file
+                os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles")        
+
     # write smCounter threshold to disk file, for main summary table
     fileout = open(readSet + ".smCounter.summary.txt", "w")
     fileout.write("{}\tsmCounter variant calling threshold\n".format(smCounterThreshold))
@@ -74,5 +83,4 @@ def run(cfg, paramFile, vc):
     numVariants = -1
     for line in open(readSet + ".smCounter.cut.txt","r"):
         numVariants += 1
-    return numVariants
-    
+    return numVariants    

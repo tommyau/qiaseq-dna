@@ -54,7 +54,7 @@ def run(args):
     core.umi_filter.run(cfg, bamFileIn)
     core.umi_mark.run(cfg)   
     metrics.umi_frags.run(cfg)   
-    metrics.umi_depths.run(cfg)   
+    metrics.umi_depths.run(cfg,vc)   
     core.umi_merge.run(cfg, bamFileIn)
     
     # soft clip primer regions from read alignments

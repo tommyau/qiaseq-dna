@@ -261,19 +261,12 @@ def getLodEstimates(cfg,fileoutSummary,bedgraphDepths):
  
     # call R script for LOD estimate
     fileInName  = readSet + ".umi_depths.lod.txt"
-    fileOutName = readSet + ".umi_depths.lod.temp.txt" 
-    cmd = "Rscript {} {} {} {}".format(scriptName, umiDepthMean, fileInName, fileOutName)
-    subprocess.check_call(cmd,shell=True)
- 
-    # add the bedgraph track line to the R output file
-    fileout = open(readSet + ".umi_depths.lod.bedgraph", "w")
-    fileout.write("track type=bedGraph name='" + readSet + ".umi_depths.lod'\n")
-    for line in open(readSet + ".umi_depths.lod.temp.txt", "r"):
-        fileout.write(line)
-    fileout.close()
+    fileOutName = readSet + ".umi_depths.lod.bedgraph" 
+    cmd = "Rscript {} {} {} {} {}".format(scriptName, umiDepthMean, fileInName, fileOutName, readSet)
+    subprocess.check_call(cmd,shell=True) 
     
     # format the LOD percentiles and write to summary file
-    for line in open(readSet + ".umi_depths.lod.temp.txt.quantiles.txt","r"):
+    for line in open(readSet + ".umi_depths.lod.bedgraph.quantiles.txt","r"):
         (metricName, metricVal) = line.strip().split("|")
         metricName = int(metricName.replace("%",""))
         metricVal = float(metricVal)
@@ -282,8 +275,7 @@ def getLodEstimates(cfg,fileoutSummary,bedgraphDepths):
   
     # remove the temporary files
     os.remove(readSet + ".umi_depths.lod.txt")
-    os.remove(readSet + ".umi_depths.lod.temp.txt")
-    os.remove(readSet + ".umi_depths.lod.temp.txt.quantiles.txt")
+    os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles")
  
 #------------------------------------------------------------------------
 # output one locus for UMI depth bedgraph   
@@ -396,7 +388,7 @@ def makeUmiDepthBedgraph(cfg,readSupportMin,trackName):
 #---------------------------------------------------------------------   
 # main function
 #---------------------------------------------------------------------   
-def run(cfg):
+def run(cfg,vc):
     print("umi_depths starting...")
     readSet  = cfg.readSet
     numCores = cfg.numCores
@@ -410,8 +402,7 @@ def run(cfg):
     
     # make depth bedgraph files, save to disk
     makeUmiDepthBedgraph(cfg,0, "umi_depths.raw_reads")  # raw read depth
-    makeUmiDepthBedgraph(cfg,1, "umi_depths")            # UMI depth
-    makeUmiDepthBedgraph(cfg,4, "umi_depths.ge4reads")   # UMI with >=4 supporting reads depth
+    makeUmiDepthBedgraph(cfg,1, "umi_depths.enrichment-output")            # UMI depth
     print("umi_depths: done making depth bedgraphs")
     
     # get target region from disk, or make it if not specified
@@ -421,7 +412,7 @@ def run(cfg):
     fileout = open(readSet + ".umi_depths.summary.txt", "w")
     fileout.write("{}\t# of target bases\n".format(bpTarget))
     # remove non-target regions from UMI depth bedgraph, compute uniformity metrics
-    bedgraphDepths = getDepthsInRoi(bedTarget, readSet + ".umi_depths.bedgraph")
+    bedgraphDepths = getDepthsInRoi(bedTarget, readSet + ".umi_depths.enrichment-output.bedgraph")
     getUniformityMetrics(bedgraphDepths, fileout, "UMI")
     print("umi_depths: done making UMI depth bedgraph over ROI only, and computing depth uniformity")
     
@@ -431,9 +422,10 @@ def run(cfg):
     os.remove(readSet + ".umi_depths.raw_reads.bedgraph")
     print("umi_depths: done making UMI depth bedgraph over ROI only, and computing depth uniformity")
     
-    # get allele fraction limit-of-detection (LOD) estimate for each locus
-    getLodEstimates(cfg,fileout,bedgraphDepths)
-    print("umi_depths: done making computing allele fraction LOD")
+    if vc == "v1": # for smCounter-v2 , LOD estimates are output during variant calling
+        # get allele fraction limit-of-detection (LOD) estimate for each locus
+        getLodEstimates(cfg,fileout,bedgraphDepths)
+        print("umi_depths: done making computing allele fraction LOD")
     
     # close summary file
     fileout.close()
