@@ -109,7 +109,7 @@ def create_primer_search_datastruct(primer_file,primer_file_clusters,cache=False
                 primers[p2][-1].append(p1)
     if cache:
         with open(cache_file,"wb") as OUT:
-            pickle.dumps((primer_kmer,primers,primers_cutadapt),OUT)
+            pickle.dump((primer_kmer,primers,primers_cutadapt),OUT)
     else:
         return (primer_kmer,primers,primers_cutadapt)
 
@@ -187,7 +187,7 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     :param str primer_tag_name: Tag name for storing the primer in the bam/sam file
     :param str primer_err_tag_name: Tag Name for storing the edit distance of the primer match in the bam/sam file
     :param bool load_cache: Whether to load the primer search datastructure (useful when splitting a fastq and running in parallel)
-    :param str cache_file: If load_cache is True, file path to load(pickle) from
+    :param str cache_file: If load_cache is True, file path to load from
     '''
     # counters
     num_R1=0
@@ -195,7 +195,8 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     trimmed_R2= 0
 
     # primer search datastruct
-    if load_cache:
+    if load_cache: # pickle and dill do not seem to be working. will debug this later. do not use cache for now.
+        raise UserWarning("Feature not implemented yet, cannot serialize primer data structure objects.")
         with open(cache_file,"rb") as IN:
             primer_datastruct = pickle.load(IN)
     else:
