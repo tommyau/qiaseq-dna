@@ -191,9 +191,14 @@ def run(cfg, bamFileIn, bamFileOut, resampleOnly):
         # flag for pair with one or both reads 100% soft clipped
         dropReadPair = False
            
+        # store mapQ for R1 and R2
+        mapQ = []
+  
         # loop over R1 then R2
         for read in (read1, read2):
         
+            mapQ.append(read.mapping_quality)
+   
             # get tag containing primer design location
             designSite = read.get_tag("pr")
             
@@ -230,6 +235,10 @@ def run(cfg, bamFileIn, bamFileOut, resampleOnly):
             if read.has_tag("MD"):
                 read.set_tag("MD",None)
     
+        # tag each read with their respective mate's mapQ
+        read1.set_tag("MQ",mapQ[1])
+        read2.set_tag("MQ",mapQ[0])
+  
         #---------------------------------------------------------------------------------------------------
         # clip any umi/common-11-mer oligo from 3' end of R1 that aligns beyond the R2 alignment start
         #---------------------------------------------------------------------------------------------------
