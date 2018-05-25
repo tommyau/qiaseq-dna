@@ -49,7 +49,7 @@ def run(cfg, paramFile, vc):
     cfgSmCounter["outPrefix"] = readSet
     cfgSmCounter["bamFile"  ] = readSet + ".bam"
     cfgSmCounter["bedTarget"] = cfg.roiBedFile
-    cfgSmCounter["rpb"      ] = cfg.readsPerUmi  # this comes from metrics.umi_frags module
+    cfgSmCounter["rpb"      ] = 2.6 #cfg.readsPerUmi  # this comes from metrics.umi_frags module
     cfgSmCounter["nCPU"     ] = cfg.numCores
     cfgSmCounter["refGenome"] = cfg.genomeFile
  
@@ -68,7 +68,7 @@ def run(cfg, paramFile, vc):
         with open(readSet + ".umi_depths.lod.bedgraph.quantiles.txt","r") as IN:
             for line in IN:
                 (metricName, metricVal) = line.strip().split("|")
-                metricName = int(metricName,replace("%",""))
+                metricName = int(metricName.replace("%",""))
                 metricVal = float(metricVal)
                 thorst = "st" if metricName == 1 else "th"
                 fileoutSummary.write("{:6.4f}\t{:2d}{} percentile estimated minimum detectible allele fraction (LOD)\n".format(metricVal, metricName,thorst))

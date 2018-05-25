@@ -5,7 +5,6 @@ import multiprocessing
 import core.run_log
 import core.run_config
 import core.prep
-import core.prep_trim_duplex
 import core.align
 import core.umi_filter
 import core.umi_mark
@@ -39,21 +38,23 @@ def run(args):
     # trim adapters , umi and primers (this module spawns multiple processes)
     core.prep.run(cfg)
     
-    if cfg.platform.lower() == "illumina"  
+    if cfg.platform.lower() == "illumina":
         # align trimmed reads to genome using BWA MEM
         readFileIn1 = readSet + ".prep.R1.fastq"
         readFileIn2 = readSet + ".prep.R2.fastq"
         bamFileOut  = readSet + ".align.bam"
         core.align.run(cfg, readFileIn1, readFileIn2, bamFileOut)
-    else: # use tmap for ion torrent reads
-        misc.process_ion.trimIon(cfg)
+    else: # use tmap for ion torrent reads        
         misc.process_ion.alignToGenomeIon(cfg)
   
     # call putative unique input molecules using BOTH UMI seq AND genome alignment position on random fragmentation side
+    
     bamFileIn  = readSet + ".align.bam"
+     
     core.umi_filter.run(cfg, bamFileIn)
     core.umi_mark.run(cfg)   
-    metrics.umi_frags.run(cfg)   
+    metrics.umi_frags.run(cfg)
+       
     metrics.umi_depths.run(cfg,vc)   
     core.umi_merge.run(cfg, bamFileIn)
     
@@ -66,11 +67,11 @@ def run(args):
     metrics.sum_primer_umis.run(cfg) # primer-level umi and read metrics
     metrics.sum_specificity.run(cfg) # priming specificity
     metrics.sum_uniformity_primer.run(cfg) # primer-level uniformity
- 
+
     # sort the final BAM file, to prepare for downstream variant calling
     bamFileIn  = readSet + ".primer_clip.bam"
     bamFileOut = readSet + ".bam"
-    core.samtools.sort(cfg,bamFileIn,bamFileOut)   
+    #core.samtools.sort(cfg,bamFileIn,bamFileOut)   
    
     if cfg.duplex.lower() == "false": # do not run smCounter for duplex reads
  

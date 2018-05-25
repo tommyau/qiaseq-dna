@@ -10,6 +10,24 @@ from multiprocessing.dummy import Pool as ThreadPool
 import primer_trim
 
 #-------------------------------------------------------------------------------------
+def runShellCommand(cmd):
+    # run shell command, capture stdout and stderror (assumes log is not large and not redirected to disk)
+    try:
+        log = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+        error = False
+    except subprocess.CalledProcessError, ex:
+        log = ex.output
+        error = True
+        
+    # print command log output
+    for line in log.split("\n"):
+        print("prep_trim: " + line.strip())
+     
+    # re-raise exception now that error detail has been printed
+    if error:
+        raise(ex)
+
+#-------------------------------------------------------------------------------------
 def worker(cmd):
     try:
         subprocess.check_call(cmd, shell=True)
@@ -105,11 +123,11 @@ def run(cfg):
     # set sequencing type for trimming
     if cfg.platform.lower() == "illumina": 
         if cfg.duplex.lower() == "true": ## Duplex sequencing run
-            cfg.seqtype = "illumina_duplex"
+            seqtype = "illumina_duplex"
         else:
-            cfg.seqtype = "illumina"
+            seqtype = "illumina"
     else:
-        cfg.seqtype = "iontorrent"
+        seqtype = "iontorrent"
 
     # set output file prefix
     filePrefixOut = readSet + ".prep"
@@ -161,7 +179,7 @@ def run(cfg):
     # run cd-hit to cluster close primer sequences; creates the file {primerFile}.clusters
     primer_trim.cluster_primer_seqs(primerFile)
     # cache primer search datastructure to avoid repeated compute over batches; creates the file {primerFile}.kmer.cache
-    primer_trim.create_primer_search_datastruct(primerFile,primerFile+'.clusters',cache=True,cache_file=primerFile+".kmer.cache")
+    #primer_trim.create_primer_search_datastruct(primerFile,primerFile+'.clusters',cache=True,cache_file=primerFile+".kmer.cache")
     
     # set up trimming work to be run in parallel sub-processes, using another python script
     workIn = []

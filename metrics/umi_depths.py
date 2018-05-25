@@ -430,20 +430,6 @@ def run(cfg,vc):
     # close summary file
     fileout.close()
     
-    # write bases of ROI that have MT depth below 20% of mean depth - can be concatenated
-    umiDepthLow = 0.20 * cfg.umiDepthMean
-    fileout = open(readSet + ".umi_depths.LT20PctOfMean.txt", "w")
-    fileout.write("\t".join(("read set", "chrom", "loc", "UMI depth")))
-    fileout.write("\n")
-    for (chrom, locL, locR, umiDepth) in bedgraphDepths:
-        if umiDepth < umiDepthLow:
-            for loc in range(locL, locR):
-                outvec = (readSet, chrom, loc, umiDepth)
-                fileout.write("\t".join((str(x) for x in outvec)))
-                fileout.write("\n")
-    fileout.close()
-    print("umi_depths: done writing regions below 20% of mean UMI depth")
-    
 #----------------------------------------------------------------------------------------------
 # run from the command line
 #----------------------------------------------------------------------------------------------

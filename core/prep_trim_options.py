@@ -1,6 +1,6 @@
 import os
 # our modules
-from prep_trim import runShellCommand
+from prep import runShellCommand
 
 #-------------------------------------------------------------------------------------
 def trim_illumina(filePrefix,cutadaptDir,tagNameUmiSeq):
