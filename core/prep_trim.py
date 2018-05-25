@@ -27,9 +27,10 @@ def run(cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,fi
     print "Finished with trimming\n"    
     # delete unneeded temp files
     for i in range(0,3):
-        file_to_delete = filePrefix + ".temp%i.R1.fastq"%i
-        if os.path.exists(file_to_delete):
-            os.remove(file_to_delete)    
+        for read in ('R1','R2'):
+            file_to_delete = filePrefix + ".temp%i.%s.fastq"%(i,read)
+            if os.path.exists(file_to_delete):
+                os.remove(file_to_delete)    
     # rename the output files - overwrite the input files!
     os.rename(filePrefix + ".trimmed.R1.fastq", filePrefix + ".R1.fastq")
     os.rename(filePrefix + ".trimmed.R2.fastq", filePrefix + ".R2.fastq")
