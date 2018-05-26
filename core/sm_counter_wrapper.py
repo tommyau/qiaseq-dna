@@ -72,8 +72,8 @@ def run(cfg, paramFile, vc):
                 metricVal = float(metricVal)
                 thorst = "st" if metricName == 1 else "th"
                 fileoutSummary.write("{:6.4f}\t{:2d}{} percentile estimated minimum detectible allele fraction (LOD)\n".format(metricVal, metricName,thorst))
-                # remove the temporary file
-                os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles")        
+        # remove the temporary file
+        os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles.txt")        
 
     # write smCounter threshold to disk file, for main summary table
     fileout = open(readSet + ".smCounter.summary.txt", "w")
