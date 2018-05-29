@@ -37,15 +37,15 @@ def run(args):
 
     # trim adapters , umi and primers (this module spawns multiple processes)
     core.prep.run(cfg)
-    
+
+    readFileIn1 = readSet + ".prep.R1.fastq"
+    readFileIn2 = readSet + ".prep.R2.fastq"
+    bamFileOut  = readSet + ".align.bam"    
     if cfg.platform.lower() == "illumina":
         # align trimmed reads to genome using BWA MEM
-        readFileIn1 = readSet + ".prep.R1.fastq"
-        readFileIn2 = readSet + ".prep.R2.fastq"
-        bamFileOut  = readSet + ".align.bam"
         core.align.run(cfg, readFileIn1, readFileIn2, bamFileOut)
     else: # use tmap for ion torrent reads        
-        misc.process_ion.alignToGenomeIon(cfg)
+        misc.process_ion.alignToGenomeIon(cfg, readFileIn1, bamFileOut)
   
     # call putative unique input molecules using BOTH UMI seq AND genome alignment position on random fragmentation side
     

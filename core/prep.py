@@ -185,7 +185,7 @@ def run(cfg):
     workIn = []
     for batchNum in range(numBatches):
         filePrefixBatch = "{}.{:04d}".format(filePrefixOut,batchNum)
-        cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} {8} > {7}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,filePrefixBatch,primerFile,seqtype)
+        cmd = "python {0} {1} {2} {3} {4} {5} {6} {7} {8} > {6}.log 2>&1 ".format(trimScript,cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,filePrefixBatch,primerFile,seqtype)
         workIn.append(cmd)
         
     # run cutadapt and UMI extraction in parallel sub-processes
@@ -223,17 +223,24 @@ def run(cfg):
         logFileOut.write(IN.read())
         IN.close()
         os.remove(logFileIn)
-        logFileOut.close()
+    logFileOut.close()
 
-    # For ion-torrent reads concatenate the umi tag files        
+    # For ion-torrent reads concatenate the umi and primer tag files        
     if seqtype == 'iontorrent':
-        OUT = open(readSet + ".umi.tag.txt","w")
+        OUT1 = open(readSet + ".umi.tag.txt","w")
+        OUT2 = open(readSet + ".primer.tag.txt","w")
         for umiTagFileTemp in glob.glob(filePrefixOut + "*.umi.tag.txt"):
-            IN =  open(umiTagFileTemp,"r")
-            OUT.write(IN.read()) # reading into memory
-            IN.close()
+            IN1 =  open(umiTagFileTemp,"r")
+            OUT1.write(IN1.read()) # reading into memory
+            IN1.close()
             os.remove(umiTagFileTemp)
-        OUT.close()
+        for primerTagFileTemp in glob.glob(filePrefixOut + "*.primer.tag.txt"):
+            IN2 = open(primerTagFileTemp,"r")
+            OUT2.write(IN2.read()) # reading into memory
+            IN2.close()
+            os.remove(primerTagFileTemp)
+        OUT1.close()
+        OUT2.close()
 
     # aggregate summary read count files - for some trim scripts these files contain important read count metrics
     output = []

@@ -175,7 +175,7 @@ def iterate_fastq(R1_fastq,R2_fastq):
 
 
 
-def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clusters,primer_3_bases,primer_tag_name,primer_err_tag_name,load_cache=False,cache_file=None):
+def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clusters,primer_3_bases,primer_tag_name,primer_err_tag_name,update_read_id=True,out_tag_file=None,load_cache=False,cache_file=None):
     ''' Main function
     :param str R1_fastq: Path to Input R1 fastq file
     :param str R2_fastq: Path to Input R2 fastq file
@@ -186,8 +186,10 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     :param int primer_3_bases: Number of bases to keep on the 3' end of the primers
     :param str primer_tag_name: Tag name for storing the primer in the bam/sam file
     :param str primer_err_tag_name: Tag Name for storing the edit distance of the primer match in the bam/sam file
+    :param bool update_read_id: Whether to add primer info tags to read id. This is False for IonTorrent reads since tmap cannot tag bam files with these
+    :param str out_tag_file : Output file for primer info tags if update_read_id is False. None by default  
     :param bool load_cache: Whether to load the primer search datastructure (useful when splitting a fastq and running in parallel)
-    :param str cache_file: If load_cache is True, file path to load from
+    :param str cache_file: If load_cache is True, file path to load from  
     '''
     # counters
     num_R1=0
@@ -203,13 +205,20 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
         primer_datastruct = create_primer_search_datastruct(primer_file,primer_file_clusters,cache=False)
     primer_kmer,primers,primers_cutadapt = primer_datastruct
 
-    def reformat_readid(read_id,primer_info,primer_err):
+    def reformat_readid(read_id,primer_info,primer_err,update_read_id=True):
         ''' Reformat read id with primer tags
         '''
-        primer_info_tag = primer_tag_name + ":Z:" + primer_info
-        primer_err_tag = primer_err_tag_name + ":Z:" + primer_err
+        if update_read_id:
+            primer_info_tag = primer_tag_name + ":Z:" + primer_info
+            primer_err_tag = primer_err_tag_name + ":Z:" + primer_err
+        else:
+            primer_info_tag = primer_info
+            primer_err_tag = primer_err
         return (read_id + "\t" + primer_info_tag + "\t" + primer_err_tag)
 
+    if not update_read_id:
+        OUT3 = open(out_tag_file,"w")       
+        
     with open(R1_fastq_out,'w') as OUT1, open(R2_fastq_out,'w') as OUT2:
         for R1_info, R2_info in iterate_fastq(R1_fastq,R2_fastq):
             R1_id,R1_seq,R1_t,R1_qual = R1_info
@@ -219,8 +228,11 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
 
             if trim_pos == -1: # No primer found
                 # re-format read id
-                R1_id = reformat_readid(R1_id,primer,primer_err)
-                R2_id = reformat_readid(R2_id,primer,primer_err)
+                if update_read_id:
+                    R1_id = reformat_readid(R1_id,primer,primer_err)
+                    R2_id = reformat_readid(R2_id,primer,primer_err)
+                else:
+                    OUT3.write(reformat_readid(R1_id,primer,primer_err,update_read_id)+"\n") # for ion torrent reads                    
                 # write to output fastq
                 OUT1.write(R1_id + "\n" + R1_seq + "\n" + R1_t + "\n" + R1_qual + "\n")
                 OUT2.write(R2_id + "\n" + R2_seq + "\n" + R2_t + "\n" + R2_qual + "\n")
@@ -230,9 +242,11 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
                 primer_info = chrom+"-"+strand+"-"+pos
                 trimmed_R1+=1
                 # re-format read id
-                R1_id = reformat_readid(R1_id,primer_info,primer_err)
-                R2_id = reformat_readid(R2_id,primer_info,primer_err)
-
+                if update_read_id:
+                    R1_id = reformat_readid(R1_id,primer_info,primer_err)
+                    R2_id = reformat_readid(R2_id,primer_info,primer_err)
+                else:
+                    OUT3.write(reformat_readid(R1_id,primer,primer_err,update_read_id)+"\n") # for ion torrent reads
                 # trim R1
                 if primer_3_bases ==  -1 or primer_3_bases > len(R1_seq): # keep R1 and R1_qual to be as is
                     pass
@@ -269,6 +283,8 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
     print "R1 Reads Trimmed: {}".format(trimmed_R1)
     print "Total R2 Reads: {}".format(num_R1)
     print "R2 Reads Trimmed: {}".format(trimmed_R2)
+    if not update_read_id:
+        OUT3.close()
 
 if __name__ == '__main__':
     assert len(sys.argv) == 10, "Incorrect command line params specified !"
