@@ -216,7 +216,7 @@ def add_bam_tags(bamIn,bamOut,readSet,tagNameUmiSeq,tagNamePrimer,tagNamePrimerE
             umi_dict[read_id] = [umi,None,None]
     with open(readSet + ".primer.tag.txt","r") as IN:
         for line in IN:
-            read_id, primer, primerErr = line.strip('\n').split('\t')
+            read_id, primer, primer_err = line.strip('\n').split('\t')
             umi_dict[read_id][1] = primer
             umi_dict[read_id][2] = primer_err
     print "\nDone creating readID -> (umi,primer,primer_err)  dict\n"            

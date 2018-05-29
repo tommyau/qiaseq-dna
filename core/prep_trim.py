@@ -23,8 +23,12 @@ def run(cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,fi
     print "Trimming Primers\n"
     fileOut1 = filePrefix + ".trimmed.R1.fastq"
     fileOut2 = filePrefix + ".trimmed.R2.fastq"
-    cond = False if seqtype == 'iontorrent' else True # whether to add primer info to read id comment 
-    primer_trim.main(fileIn1,fileIn2,fileOut1,fileOut2,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=cond,out_tag_file=filePrefix+".primer.tag.txt",load_cache=False,cache_file=primerFile+".kmer.cache")
+    cond = False if seqtype == 'iontorrent' else True 
+    if seqtype == "iontorrent":        
+        primer_trim.main(fileIn2,fileIn1,fileOut2,fileOut1,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=False,out_tag_file=filePrefix+".primer.tag.txt",load_cache=False,cache_file=primerFile+".kmer.cache") # swapped R1 and R2
+    else:
+        primer_trim.main(fileIn2,fileIn1,fileOut2,fileOut1,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=True,out_tag_file=None,load_cache=False,cache_file=primerFile+".kmer.cache")
+    
     print "Finished with trimming\n"    
     # delete unneeded temp files
     for i in range(0,3):
@@ -32,12 +36,6 @@ def run(cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,fi
             file_to_delete = filePrefix + ".temp%i.%s.fastq"%(i,read)
             if os.path.exists(file_to_delete):
                 os.remove(file_to_delete)
-            file_to_delete = filePrefix + ".cutadapt.5.%s.txt"%(read) # ion torrent runs
-            if os.path.exists(file_to_delete):
-                os.remove(file_to_delete)
-            file_to_delete = filePrefix + ".cutadapt.3.%s.txt"%(read) # ion torrent runs
-            if os.path.exists(file_to_delete):
-                os.remove(file_to_delete)                
     # rename the output files - overwrite the input files!
     os.rename(filePrefix + ".trimmed.R1.fastq", filePrefix + ".R1.fastq")
     os.rename(filePrefix + ".trimmed.R2.fastq", filePrefix + ".R2.fastq")

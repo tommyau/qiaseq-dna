@@ -246,7 +246,7 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
                     R1_id = reformat_readid(R1_id,primer_info,primer_err)
                     R2_id = reformat_readid(R2_id,primer_info,primer_err)
                 else:
-                    OUT3.write(reformat_readid(R1_id,primer,primer_err,update_read_id)+"\n") # for ion torrent reads
+                    OUT3.write(reformat_readid(R1_id,primer_info,primer_err,update_read_id)+"\n") # for ion torrent reads
                 # trim R1
                 if primer_3_bases ==  -1 or primer_3_bases > len(R1_seq): # keep R1 and R1_qual to be as is
                     pass

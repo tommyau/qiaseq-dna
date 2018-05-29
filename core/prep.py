@@ -229,19 +229,35 @@ def run(cfg):
     if seqtype == 'iontorrent':
         OUT1 = open(readSet + ".umi.tag.txt","w")
         OUT2 = open(readSet + ".primer.tag.txt","w")
-        for umiTagFileTemp in glob.glob(filePrefixOut + "*.umi.tag.txt"):
+        OUT3 = open(readSet + ".cutadapt.5.R1.txt","w")
+        OUT4 = open(readSet + ".cutadapt.3.R1.txt","w")
+        
+        for umiTagFileTemp in sorted(glob.glob(filePrefixOut + "*.umi.tag.txt")):
             IN1 =  open(umiTagFileTemp,"r")
             OUT1.write(IN1.read()) # reading into memory
             IN1.close()
             os.remove(umiTagFileTemp)
-        for primerTagFileTemp in glob.glob(filePrefixOut + "*.primer.tag.txt"):
+        for primerTagFileTemp in sorted(glob.glob(filePrefixOut + "*.primer.tag.txt")):
             IN2 = open(primerTagFileTemp,"r")
             OUT2.write(IN2.read()) # reading into memory
             IN2.close()
             os.remove(primerTagFileTemp)
+        for cutadapt5FileTemp in sorted(glob.glob(filePrefixOut + "*.cutadapt.5.R1.txt")):
+            IN3 = open(cutadapt5FileTemp,"r")
+            OUT3.write(IN3.read()) # reading into memory
+            IN3.close()
+            os.remove(cutadapt5FileTemp)
+        for cutadapt3FileTemp in sorted(glob.glob(filePrefixOut + "*.cutadapt.3.R1.txt")):
+            IN4 = open(cutadapt3FileTemp,"r")
+            OUT4.write(IN4.read()) # reading into memory
+            IN4.close()
+            os.remove(cutadapt3FileTemp)
+            
         OUT1.close()
         OUT2.close()
-
+        OUT3.close()
+        OUT4.close()
+        
     # aggregate summary read count files - for some trim scripts these files contain important read count metrics
     output = []
     firstFile = True
