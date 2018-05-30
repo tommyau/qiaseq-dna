@@ -9,6 +9,7 @@ args <- commandArgs(TRUE)
 args.meanMtDepth = as.numeric(args[1])
 args.fileIn = args[2]
 args.fileOut = args[3]
+args.outPrefix = args[4]
 
 # read in the MT depths
 dat <- read.delim(args.fileIn, sep='|', header=F)
@@ -34,6 +35,54 @@ findLOD <- function(barcode.depth){
    }
    return(round(lod.out,4))
 }
+# function to collapse same value(lod/coverage) columns
+# and write a bedgraph file
+output_bedgraph <- function(df,outfile,header,val_col="foo"){
+#                  @param dataframe df      : The input dataframe to iterate over
+#                  @param string    val_col : The column name of the value in the bedgraph
+#                  @param string    outfile : The output file path
+#                  @param string    header  : The header for the bedgraph file
+
+   file_handle <- file(outfile,"w")
+   cat(header,file=file_handle)
+   prev_val <- NULL
+   test <- c("lod","sumt")
+   for (row in 1:nrow(df)) {
+      val <- df[row,val_col]
+      chr <- df[row, "chrom"]
+      pos <- df[row, "locR"]
+      if (is.null(prev_val)) {
+	 prev_val <- val
+	 prev_chr <- chr
+	 prev_pos <- pos
+	 init_pos <- pos
+	 next # skip first iteration of loop
+      }
+      else {
+	 if (prev_chr != chr) {
+	    out <- sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
+            out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,5),"\n")
+            cat(out,file=file_handle)
+	    init_pos <- pos
+	 }
+	 else if (prev_val != val) {
+	    out <- sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
+            out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,5),"\n")
+            cat(out,file=file_handle)
+	    init_pos <- pos
+	 }
+	 prev_val <- val
+	 prev_chr <- chr
+	 prev_pos <- pos
+      }
+   }
+   # finish out last line of the file
+   out = sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
+   out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,3),"\n")
+   cat(out,file=file_handle)
+   close(file_handle)
+}
+
 
 # compute LOD for each target locus 
 dat$lod <- sapply(dat$MTs, findLOD)
@@ -42,7 +91,8 @@ dat$lod <- sapply(dat$MTs, findLOD)
 dat$MTs <- NULL
 
 # output bedgraph file 
-write.table(dat, args.fileOut, sep='\t', row.names=F, col.names=F, quote=F)
+header <- sprintf("track type=bedGraph name='%s.umi_depths.lod'\n",outPrefix)
+output_bedgraph(dat,args.fileOut,header,"lod")
 
 # output quantiles of the LOD
 lod.quantiles <- quantile(dat$lod,probs=c(0.01,0.05,0.10,0.50,0.90,0.95,0.99))

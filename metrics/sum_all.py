@@ -10,7 +10,7 @@ def run(cfg):
         umiFilterFile = "umi_filter.detail"
 
     # concatenate summary files
-    with open(readSet + ".sumAll.summary.txt", "w") as OUT:
+    with open(readSet + ".sum_all.summary.txt", "w") as OUT:
         for fileType in ("prep", "align", umiFilterFile, "umi_frags", "sum.uniformity.primer", "umi_depths", "smCounter", "vcf_complex"):
             '''
             prep, align --> trimming metrics ; core/prep.py, misc/tvc.py
@@ -24,5 +24,3 @@ def run(cfg):
             if os.path.isfile(fileName):
                 for line in open(fileName):
                     OUT.write(line)
-        
-    
