@@ -188,7 +188,7 @@ def getDepthsInRoi(bedTarget,depthFile):
 #------------------------------------------------------------------------------------------
 # enrichment depth uniformity metrics
 #------------------------------------------------------------------------------------------
-def getUniformityMetrics(bedgraphDepths,fileout,metricType):
+def getUniformityMetrics(cfg,bedgraphDepths,fileout,metricType):
 
     # make depth vector - as big as the target region
     depths = []
@@ -207,8 +207,10 @@ def getUniformityMetrics(bedgraphDepths,fileout,metricType):
     # sort
     depths.sort()
     
-    # get mean depth
+    # get mean depth        
     depthMean = 1.00 * depthTotal / len(depths)
+    if metricType == "UMI":
+        cfg.umiDepthMean = depthMean # for v2 since getLodEstimates() is called for only v1
        
     # get % of mean metrics
     outvec = [depthMean]
@@ -413,12 +415,12 @@ def run(cfg,vc):
     fileout.write("{}\t# of target bases\n".format(bpTarget))
     # remove non-target regions from UMI depth bedgraph, compute uniformity metrics
     bedgraphDepths = getDepthsInRoi(bedTarget, readSet + ".umi_depths.enrichment-output.bedgraph")
-    getUniformityMetrics(bedgraphDepths, fileout, "UMI")
+    getUniformityMetrics(cfg,bedgraphDepths, fileout, "UMI")
     print("umi_depths: done making UMI depth bedgraph over ROI only, and computing depth uniformity")
     
     # remove non-target regions from raw read depth bedgraph, compute uniformity metrics
     bedgraphDepthsRaw = getDepthsInRoi(bedTarget, readSet + ".umi_depths.raw_reads.bedgraph")
-    getUniformityMetrics(bedgraphDepthsRaw, fileout, "read")
+    getUniformityMetrics(cfg,bedgraphDepthsRaw, fileout, "read")
     os.remove(readSet + ".umi_depths.raw_reads.bedgraph")
     print("umi_depths: done making UMI depth bedgraph over ROI only, and computing depth uniformity")
     
@@ -429,6 +431,20 @@ def run(cfg,vc):
     
     # close summary file
     fileout.close()
+    
+    # write bases of ROI that have MT depth below 20% of mean depth - can be concatenated
+    umiDepthLow = 0.20 * cfg.umiDepthMean
+    fileout = open(readSet + ".umi_depths.LT20PctOfMean.txt", "w")
+    fileout.write("\t".join(("read set", "chrom", "loc", "UMI depth")))
+    fileout.write("\n")
+    for (chrom, locL, locR, umiDepth) in bedgraphDepths:
+        if umiDepth < umiDepthLow:
+            for loc in range(locL, locR):
+                outvec = (readSet, chrom, loc, umiDepth)
+                fileout.write("\t".join((str(x) for x in outvec)))
+                fileout.write("\n")
+    fileout.close()
+    print("umi_depths: done writing regions below 20% of mean UMI depth")
     
 #----------------------------------------------------------------------------------------------
 # run from the command line
