@@ -25,9 +25,9 @@ def run(cutadaptDir,tagNameUmiSeq,tagNamePrimer,tagNamePrimerErr,primer3Bases,fi
     fileOut2 = filePrefix + ".trimmed.R2.fastq"
     cond = False if seqtype == 'iontorrent' else True 
     if seqtype == "iontorrent":        
-        primer_trim.main(fileIn2,fileIn1,fileOut2,fileOut1,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=False,out_tag_file=filePrefix+".primer.tag.txt",load_cache=False,cache_file=primerFile+".kmer.cache") # swapped R1 and R2
+        primer_trim.main(fileIn2,fileIn1,fileOut2,fileOut1,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=False,out_tag_file=filePrefix+".primer.tag.txt",load_cache=False,cache_file=None) # swapped R1 and R2
     else:
-        primer_trim.main(fileIn2,fileIn1,fileOut2,fileOut1,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=True,out_tag_file=None,load_cache=False,cache_file=primerFile+".kmer.cache")
+        primer_trim.main(fileIn1,fileIn2,fileOut1,fileOut2,primerFile,primerFile+'.clusters',int(primer3Bases),tagNamePrimer,tagNamePrimerErr,update_read_id=True,out_tag_file=None,load_cache=False,cache_file=None)
     
     print "Finished with trimming\n"    
     # delete unneeded temp files
