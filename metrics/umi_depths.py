@@ -202,6 +202,7 @@ def getUniformityMetrics(cfg,bedgraphDepths,fileout,metricType):
     # if zero depth at all primers/sites, return zeros
     if depthTotal == 0:
         outvec = [0] * 5
+        cfg.umiDepthMean = 0
         return tuple(outvec)
      
     # sort
