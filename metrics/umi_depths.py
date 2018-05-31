@@ -269,7 +269,7 @@ def getLodEstimates(cfg,fileoutSummary,bedgraphDepths):
     subprocess.check_call(cmd,shell=True) 
     
     # format the LOD percentiles and write to summary file
-    for line in open(readSet + ".umi_depths.lod.bedgraph.quantiles.txt","r"):
+    for line in open(readSet + ".umi_depths.variant-calling-lod.bedgraph.quantiles.txt","r"):
         (metricName, metricVal) = line.strip().split("|")
         metricName = int(metricName.replace("%",""))
         metricVal = float(metricVal)
@@ -278,7 +278,7 @@ def getLodEstimates(cfg,fileoutSummary,bedgraphDepths):
   
     # remove the temporary files
     os.remove(readSet + ".umi_depths.lod.txt")
-    os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles")
+    os.remove(readSet + ".umi_depths.variant-calling-lod.bedgraph.quantiles.txt")
  
 #------------------------------------------------------------------------
 # output one locus for UMI depth bedgraph   

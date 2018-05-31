@@ -65,7 +65,7 @@ def run(cfg, paramFile, vc):
         smCounterThreshold = 6
         # need to add the lod quantiles output from smCounter-v2 to umi_depths.summary file
         fileoutSummary = open(readSet + ".umi_depths.summary.txt","a")
-        with open(readSet + ".umi_depths.lod.bedgraph.quantiles.txt","r") as IN:
+        with open(readSet + ".umi_depths.variant-calling-lod.bedgraph.quantiles.txt","r") as IN:
             for line in IN:
                 (metricName, metricVal) = line.strip().split("|")
                 metricName = int(metricName.replace("%",""))
@@ -73,7 +73,7 @@ def run(cfg, paramFile, vc):
                 thorst = "st" if metricName == 1 else "th"
                 fileoutSummary.write("{:6.4f}\t{:2d}{} percentile estimated minimum detectible allele fraction (LOD)\n".format(metricVal, metricName,thorst))
         # remove the temporary file
-        os.remove(readSet + ".umi_depths.lod.bedgraph.quantiles.txt")        
+        os.remove(readSet + ".umi_depths.variant-calling-lod.bedgraph.quantiles.txt")        
 
     # write smCounter threshold to disk file, for main summary table
     fileout = open(readSet + ".smCounter.summary.txt", "w")
