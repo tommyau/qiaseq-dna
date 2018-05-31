@@ -264,7 +264,7 @@ def getLodEstimates(cfg,fileoutSummary,bedgraphDepths):
  
     # call R script for LOD estimate
     fileInName  = readSet + ".umi_depths.lod.txt"
-    fileOutName = readSet + ".umi_depths.lod.bedgraph" 
+    fileOutName = readSet + ".umi_depths.variant-calling-lod.bedgraph" 
     cmd = "Rscript {} {} {} {} {}".format(scriptName, umiDepthMean, fileInName, fileOutName, readSet)
     subprocess.check_call(cmd,shell=True) 
     
