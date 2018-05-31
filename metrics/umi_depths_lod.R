@@ -60,14 +60,12 @@ output_bedgraph <- function(df,outfile,header,val_col="foo"){
       }
       else {
 	 if (prev_chr != chr) {
-	    out <- sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
-            out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,5),"\n")
+            out <- paste(prev_chr,"\t",as.integer(init_pos-1),"\t",as.integer(prev_pos),"\t",round(prev_val,5),"\n",sep="")
             cat(out,file=file_handle)
 	    init_pos <- pos
 	 }
 	 else if (prev_val != val) {
-	    out <- sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
-            out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,5),"\n")
+            out <- paste(prev_chr,"\t",as.integer(init_pos-1),"\t",as.integer(prev_pos),"\t",round(prev_val,5),"\n",sep="")
             cat(out,file=file_handle)
 	    init_pos <- pos
 	 }
@@ -77,8 +75,7 @@ output_bedgraph <- function(df,outfile,header,val_col="foo"){
       }
    }
    # finish out last line of the file
-   out = sprintf("%s\t%i\t%i\t%f\n",prev_chr,init_pos-1,prev_pos,prev_val)
-   out <- paste(prev_chr,"\t",init_pos-1,"\t",prev_pos,"\t",round(prev_val,3),"\n")
+   out <- paste(prev_chr,"\t",as.integer(init_pos-1),"\t",as.integer(prev_pos),"\t",round(prev_val,3),"\n",sep="")
    cat(out,file=file_handle)
    close(file_handle)
 }
