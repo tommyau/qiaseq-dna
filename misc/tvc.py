@@ -495,16 +495,15 @@ def smCounterFilter(cfg,vc):
 
                         # fix SAMPLE
                         GT, AD, VMF_ = sampleId.split(":")
-                        if not AD.endswith(",1") or GT != "1/2":
-                            raise Exception("tvc: unexpected bi-allelic formats in smCounter-v2 VCF") ## Even if > 2 alt alleles, AD is still reported as 1/2 in smCounter-v2
-                        AD = AD[:-2]
+                        if GT != "1/2":
+                            raise Exception("tvc: unexpected bi-allelic formats in smCounter-v2 VCF") ## Even if > 2 alt alleles, GT is still reported as 1/2 in smCounter-v2                        
                         GT = "1" if chrom == "chrY" or chrom == "chrM" else "0/1"
-                        sampleId = ":".join((GT,AD,VMF_.split(",")[index]))
+                        sampleId = ":".join((GT,AD.split(",")[index+1],VMF_.split(",")[index]))
 
                         ## Fix info
                         repeat = info.split(";")[1]
-                        umt = info.split(';')[3]
-                        assert umt == sUMT, "tvc: could not sync UMT values for smCounter-v2 vcf and variants file.\nVcf:{v1} VariantsFile:{v2}".format(v1=umt,v2=sUMT)
+                        umt = info.split(';')[3].split('=')[1]
+                        assert umt == UMT, "tvc: could not sync UMT values for smCounter-v2 vcf and variants file.\nVcf:{v1} VariantsFile:{v2}".format(v1=umt,v2=UMT)
 
                         ## split and use the appropriate metric corresponding to the allele being output
                         TYPE = TYPE.split(",")[index]
