@@ -49,7 +49,7 @@ def run(cfg, paramFile, vc):
     cfgSmCounter["outPrefix"] = readSet
     cfgSmCounter["bamFile"  ] = readSet + ".bam"
     cfgSmCounter["bedTarget"] = cfg.roiBedFile
-    cfgSmCounter["rpb"      ] = 2.6 #cfg.readsPerUmi  # this comes from metrics.umi_frags module
+    cfgSmCounter["rpb"      ] = cfg.readsPerUmi  # this comes from metrics.umi_frags module
     cfgSmCounter["nCPU"     ] = cfg.numCores
     cfgSmCounter["refGenome"] = cfg.genomeFile
  
