@@ -23,7 +23,7 @@ def cluster_primer_seqs(primer_file):
     '''
     # create a fasta of the primers
     cmd1 = (
-       """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer; """
+       """ i=0; while read chrom pos strand primer; do echo ">"$i; echo $primer|tr -d '\r'; """
        """ i=$(($i+1)); done < {primerfile} > {primerfile}.fasta; """.format(primerfile=primer_file)
        )
     print cmd1
@@ -46,7 +46,7 @@ def parse_cdhit(primer_file,cdhit_out,simple_cdhit_out):
     i=0
     with open(primer_file,'r') as IN:
         for line in IN:
-            primers.append(line.strip('\n').split('\t')[-1])
+            primers.append(line.strip('\n\r').split('\t')[-1])
 
     cluster_info = collections.defaultdict(list)
     with open(cdhit_out,'r') as IN:
