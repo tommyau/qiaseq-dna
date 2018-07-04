@@ -48,7 +48,10 @@ def run(cfg, paramFile, vc):
     # set up config dictionary to pass to smCounter
     cfgSmCounter["outPrefix"] = readSet
     cfgSmCounter["bamFile"  ] = readSet + ".bam"
-    cfgSmCounter["bedTarget"] = cfg.roiBedFile
+    if cfg.platform.lower() != "illumina": # ion reads
+        cfgSmCounter["bedTarget"] = readSet + ".tvc_roi.bed"  # subset to tvc variants
+    else:
+        cfgSmCounter["bedTarget"] = cfg.roiBedFile
     cfgSmCounter["rpb"      ] = cfg.readsPerUmi  # this comes from metrics.umi_frags module
     cfgSmCounter["nCPU"     ] = cfg.numCores
     cfgSmCounter["refGenome"] = cfg.genomeFile
