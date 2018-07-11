@@ -88,7 +88,7 @@ dat$lod <- sapply(dat$MTs, findLOD)
 dat$MTs <- NULL
 
 # output bedgraph file 
-header <- sprintf("track type=bedGraph name='%s.variant-calling-lod'\n",outPrefix)
+header <- sprintf("track type=bedGraph name='%s.variant-calling-lod'\n",args.outPrefix)
 output_bedgraph(dat,args.fileOut,header,"lod")
 
 # output quantiles of the LOD
