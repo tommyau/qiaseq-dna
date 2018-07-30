@@ -64,7 +64,7 @@ def run(cfg, paramFile, vc):
         makeLowPIFile(readSet,smCounterThreshold)
     else:
         cfgSmCounter["runPath"] = os.getcwd()
-        sm_counter_v2.sm_counter_v2.main(cfgSmCounter)
+        sm_counter_v2.run.main(cfgSmCounter)
         smCounterThreshold = 6
         # need to add the lod quantiles output from smCounter-v2 to umi_depths.summary file
         fileoutSummary = open(readSet + ".umi_depths.summary.txt","a")
