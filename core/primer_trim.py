@@ -29,7 +29,7 @@ def cluster_primer_seqs(primer_file):
     print cmd1
     subprocess.check_call(cmd1,shell=True)
     # run cd-hit
-    cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
+    cmd2 = "/srv/qgen/bin/downloads/cd-hit-v4.6.8-2017-1208/cd-hit-est -i {primerfile}.fasta -o {primerfile}.clusters.temp".format(
        primerfile=primer_file)
     subprocess.check_call(cmd2,shell=True)
     # parse output to usable format

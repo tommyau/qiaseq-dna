@@ -295,7 +295,7 @@ def run(cfg):
      + " --mnp-min-variant-score 6" \
      + " --mnp-strand-bias 1" \
      + " --mnp-strand-bias-pval 0" \
-     + " --indel-min-allele-freq 0.05" \
+     + " --indel-min-allele-freq 0.005" \
      + " --indel-min-cov-each-strand 0" \
      + " --indel-min-coverage 3" \
      + " --indel-min-var-coverage 2" \
