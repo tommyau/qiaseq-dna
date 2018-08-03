@@ -156,7 +156,7 @@ def trim_primer(primer_datastruct,R1):
                 best_score = score
                 best_editdist = editdist
                 best_plen = p_len
-            elif score == best_score
+            elif score == best_score:
                 if best_plen < p_len: # when same score with same primer length; the first hit will be chosen
                     temp = alignment
                     best_primer = p
