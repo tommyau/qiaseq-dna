@@ -150,12 +150,19 @@ def trim_primer(primer_datastruct,R1):
             alignment = edlib.align(p,R1[0:p_len+5],mode="SHW")
             editdist = alignment['editDistance']
             score =  float(editdist)/p_len
-            if best_score == None or score <= best_score:
-                if best_plen == None or best_plen < p_len: # when same score with same primer length; the first hit will be chosen
+            if best_score == None or score < best_score:
+                temp = alignment
+                best_primer = p
+                best_score = score
+                best_editdist = editdist
+                best_plen = p_len
+            elif score == best_score
+                if best_plen < p_len: # when same score with same primer length; the first hit will be chosen
                     temp = alignment
                     best_primer = p
                     best_score = score
                     best_editdist = editdist
+                    best_plen = p_len
 
     assert best_score != None, "Bug in logic ! Primer could not be scored correctly !"
 
