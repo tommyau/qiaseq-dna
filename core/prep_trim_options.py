@@ -160,7 +160,7 @@ def trim_illumina_duplex(filePrefix,cutadaptDir,tagNameUmiSeq):
     fileout2 = open(filePrefix + ".temp2.R1.fastq","w")
     filein1  = open(filePrefix + ".temp1.R1.fastq","r")
     filein2  = open(filePrefix + ".temp1.R2.fastq","r")
-    filein3  = open(filePrefixOut + ".temp0.R1.fastq","r")  # needed to pull barcode
+    filein3  = open(filePrefix + ".temp0.R1.fastq","r")  # needed to pull barcode
 
     # loop over all R1 reads
     lineIdx = 0
