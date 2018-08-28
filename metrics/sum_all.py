@@ -4,10 +4,7 @@ def run(cfg):
     # get read set name
     readSet = cfg.readSet
 
-    if cfg.outputDetail.lower() == "false":
-        umiFilterFile = "umi_filter"
-    else:
-        umiFilterFile = "umi_filter.detail"
+    umiFilterFile = "umi_filter"
 
     # concatenate summary files
     with open(readSet + ".sum_all.summary.txt", "w") as OUT:
