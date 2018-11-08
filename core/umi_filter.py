@@ -375,9 +375,9 @@ def run(cfg,bamFileIn):
     subprocess.check_call(cmd, shell=True)
     os.rename(fileName + ".tmp", fileName)
     
-    # stop pipeline if no reads
-    if readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] == 0:
-        raise UserWarning("Zero on-target reads found for read set: " + readSet)
+    # stop pipeline if very few reads on-target
+    if readPairsPrimerFoundOnTargetPctOfAll < 5:
+        raise UserWarning("< 5% on-target reads found for read set: " + readSet)
   
     # report completion
     print("umi_filter: done")
