@@ -105,11 +105,6 @@ def fet(tumorVars, normalVars):
     :param dict tumorVars :
     :param dict normalVars :
     '''
-    tot=0
-    cnt1=0
-    cnt2=0
-    cnt3=0
-    
     for var in tumorVars:
         refUMITumor  =  tumorVars[var].refUMI
         altUMITumor  =  tumorVars[var].altUMI
@@ -120,15 +115,6 @@ def fet(tumorVars, normalVars):
         oddsRatio,pval = scipy.stats.fisher_exact([[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
         tumorVars[var].pval      = pval
         tumorVars[var].oddsRatio = oddsRatio
-        afT = float(altUMITumor)/(refUMITumor+altUMITumor)
-        afN = float(altUMINormal)/(refUMINormal+altUMINormal)
-        if afN - afT > 0.2:
-            cnt1+=1
-        elif afT - afN > 0.1:
-            cnt2+=1
-        else:
-            cnt3+=1
-        tot+=1
 
     return (tumorVars)
 
