@@ -2,40 +2,77 @@ import collections
 import os
 import subprocess
 import string
+import warnings
 
-import scipy
+import scipy.stats
 import numpy as np
 
-def parseSmCounterAllFile(readSet,enforceCutoff):
-    ''' Parse smCounter all file , storing ref and alt UMI count for each variant
-    Enforce cutoffs for tumor variants, return type changes based on this param
 
+class Variant(object):
+    ''' Store information about a variant
+    '''
+    def __init__(self,*args,**kwargs):
+        '''
+        '''
+        self.refUMI = None
+        self.altUMI = None
+        self.oddsRatio = None
+        self.pval = None
+        self.adjPval = None
+        
+
+def parseVariant(row,vmt_col):
+    ''' Helper function to parse multi-allelic variants and their VMT
+    from cut/anno.vcf/txt files
+
+    :param list row
+    :return ((chrom,pos,ref,alt),vmt)
+    '''
+    if row[4].find(",")!=-1: # multi-allelic
+        alts = row[4].split(",")
+        vmts = row[vmt_col].split(",")
+        for i,alt in enumerate(alts):
+            yield ((row[0],row[1],row[3],alt),int(vmts[i])) # ((chrom,pos,ref,alt),vmt)
+    else:
+        yield ((row[0],row[1],row[3],row[4]),int(row[vmt_col]))
+
+        
+def parseAnnoTxt(readSet,refUMICounts):
+    ''' Parse annotated txt flat file , storing variant information
     :param str  readSet
-    :param bool enforceCutoff
+    :param dict refUMICounts
+    '''
+    variantObj = collections.defaultdict(Variant)
+    with open(readSet + ".smCounter.anno.txt", "r") as IN:
+        for line in IN:
+            contents = line.strip("\n").split("\t")
+            if contents[0] == "CHROM": # header"
+                continue
+            
+            for variantKey,altUMICount in parseVariant(contents,11):
+                pos    = variantKey[1]
+                variantObj[variantKey].refUMI = refUMICounts[pos]
+                variantObj[variantKey].altUMI = altUMICount
+                
+    return variantObj
+
+    
+def parseSmCounterAllFile(readSet):
+    ''' Parse smCounter all file , storing ref  UMI count for each base
+    Enforce pval cutoffs if needed
+    :param str  readSet
+    :param bool enforceCutoffs
     '''
     cutoff = 6
     minCutoff = {"INDEL":2,"SNP":2} ## Cutoff for low PI file
 
-    # init namedtuple obj
-    fields = ["refUMI", "altUMI", "oddsRatio", "pval", "adjPval"]
-    variantInfo = collections.namedtuple('variantInfo', fields)
-    # initialize field values to None by default
-    variantInfo.__new__.__defaults__ = (None,) * len(variantInfo._fields)
-    
-    ## some dicts for storing variants
-    # passing log(pval) threshold
-    tumorAboveCutoffVars = collections.defaultdict(variantInfo)
-    # passing lowQ log(pval) threshold
-    tumorLowQVars = collections.defaultdict(variantInfo)
-    # all variants
-    allVars = collections.defaultdict(variantInfo)
+    ## dicts for storing base position -> refUMI
+    allVars = {}
 
-    seen = set() # keep track of variants encountered for debug
-    # parse smCounter all.txt file, keeping lowQ and above threshold variants if tumor sample, otherwise keep everything
+    # parse smCounter all.txt file
     with open(readSet + ".smCounter.all.txt", "r") as IN:
         for line in IN:
             contents = line.strip("\n").split("\t")
-            
             if contents[0] == "CHROM": # header
                 continue
 
@@ -47,77 +84,54 @@ def parseSmCounterAllFile(readSet,enforceCutoff):
             if ALT == "DEL":
                 continue
 
-            QUAL = logpval if logpval != "NA" else 0.00
-
-            try:
-                fQUAL = float(QUAL)
-            except ValueError:
-                fQUAL = 0.00
-
-            if enforceCutoffs: # used for tumor sample
-                if fQUAL < minCutoff[TYPE.upper()]:
-                    continue
-            
-            key = tuple(contents[0],contents[1],contents[3],contents[4]) # chrom,pos,ref,alt
-            assert key not in seen, "tumor_normal: Duplicate Variant Encountered !"
-            
             if REF[0] == "A": # there could be deletions, pysam pileup uses first base as reference
-                refUMI = sUMT_A
+                refUMI = int(sUMT_A)
             elif REF[0] == "T":
-                refUMI = sUMT_T
+                refUMI = int(sUMT_T)
             elif REF[0] == "G":
-                refUMI = sUMT_G
+                refUMI = int(sUMT_G)
             elif REF[0] == "C":
-                refUMI = sUMT_C
+                refUMI = int(sUMT_C)
             else:
                 raise Exception("tumor_normal: LogicalError. Could not discern correct reference base and umi count.")
-            
-            if enforceCutoffs: # used for tumor sample
-                if fQUAL < cutoff: # lowQ
-                    lowQVars[key].refUMI = refUMI
-                    lowQVars[key].altUMI = sVMT
-                else:
-                    aboveCutoffVars[key].refUMI = refUMI
-                    aboveCutoffVars[key].altUMI = sVMT
-            else:
-                allVars[key].refUMI = refUMI
-                allVars[key].altUMI = sVMT
+
+            allVars[POS] = refUMI
                 
-    if enforceCutoffs:
-        return (aboveCutoffVars, lowQVars)
-    else:
-        return allVars
-    
-def fet(tumorAboveCutoffVars, tumorLowQVars, normalVars, umiCutoff):
+    return allVars
+
+
+def fet(tumorVars, normalVars):
     ''' Perform fisher's exact test
-    :param dict tumorAboveCutoffVars :
-    :param dict tumorLowQVars :
+    :param dict tumorVars :
     :param dict normalVars :
-    :param int  umiCutoff :
     '''
-    for var in tumorAboveCutoffVars:
-        refUMITumor  =  tumorAboveCutoffVars[var].refUMI
-        altUMITumor  =  tumorAboveCutoffVars[var].altUMI
+    tot=0
+    cnt1=0
+    cnt2=0
+    cnt3=0
+    
+    for var in tumorVars:
+        refUMITumor  =  tumorVars[var].refUMI
+        altUMITumor  =  tumorVars[var].altUMI
         refUMINormal =  normalVars[var].refUMI
         altUMINormal =  normalVars[var].altUMI
         
-        # do F.E.T only if UMI count > cutoff
-        if refUMITumor + altUMITumor > umiCutoff and refUMINormal + altUMINormal > umiCutoff:
-            pval, oddsRatio = scipy.stats.fisher_exact([[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
-            tumorAboveCutoffVars[var].pval      = pval
-            tumorAboveCutoffVars[var].oddsRatio = oddsRatio
+        # do F.E.T
+        oddsRatio,pval = scipy.stats.fisher_exact([[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
+        tumorVars[var].pval      = pval
+        tumorVars[var].oddsRatio = oddsRatio
+        afT = float(altUMITumor)/(refUMITumor+altUMITumor)
+        afN = float(altUMINormal)/(refUMINormal+altUMINormal)
+        if afN - afT > 0.2:
+            cnt1+=1
+        elif afT - afN > 0.1:
+            cnt2+=1
+        else:
+            cnt3+=1
+        tot+=1
 
-    for var in tumorLowQVars:
-        refUMITumor, altUMITumor    =  tumorLowQVars[var]
-        refUMINormal, altUMINormal  =  normalVars[var]
+    return (tumorVars)
 
-        # do F.E.T only if UMI count > cutoff
-        if refUMITumor + altUMITumor > umiCutoff and refUMINormal + altUMINormal > umiCutoff:
-            pval, oddsRatio = scipy.stats.fisher_exact([[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
-            tumorLowQVars[var].pval      = pval
-            tumorLowQVars[var].oddsRatio = oddsRatio
-            
-    return (tumorAboveCutoffVars, tumorLowQVars)
 
 def benjaminiHotchbergCorrection(pvals):
     ''' Perform FDR correction using Benjamini-Hotchberg procedure
@@ -141,92 +155,54 @@ def benjaminiHotchbergCorrection(pvals):
     ## please see this helpful link : https://stackoverflow.com/questions/10323817/r-unexpected-results-from-p-adjust-fdr
     pAdjusted = np.minimum.accumulate(tempPAdjusted[::-1])[::-1]
     return pAdjusted[np.argsort(sorted_indices)]
-    
-def tumorNormalVarFilter(cfg):
-    ''' Filter Tumor variants
-    '''
-    readSetNormal =  cfg.readSetMatchedNormal
-    readSetTumor  =  cfg.readSet
-    umiCutoff     =  cfg.umiCutoff # umi cutoff for F.E.T
-    
-    # do nothing if zero variants from tumor read set
-    if not os.path.isfile(readSetTumor + ".smCounter.cut.txt"):
-        return
 
-    # parse tumor file
-    tumorAboveCutoffVars, tumorLowQVars = parseSmCounterAllFile(readSetTumor,enforceCutoffs=True)
-    alltumorVars = set(tumorAboveCutoffVars.keys() + tumorLowQVars.keys())
-    # parse normal file
-    normalVars = parseSmCounterAllFile(readSetTumor)
 
-    # filter variants with < 10 ref + alt UMI
-    tumorAboveCutoffVarsFiltered  =  {k:v for k,v in tumorAboveCutoffVars if v.refUMI + v.altUMI >= 10}
-    tumorLowQVarsFiltered         =  {k:v for k,v in tumorLowQVars if v.refUMI + v.altUMI >= 10}
-    normalVarsFiltered            =  {k:v for k,v in normalVars if v.refUMI + v.altUMI >=10}
-
-    # perform F.E.T and store pvalue and oddsRatio
-    tumorAboveCutoffVarsFiltered, tumorLowQVarsFiltered = fet(tumorAboveCutoffVarsFiltered,
-                                                              tumorLowQVarsFiltered,
-                                                              normalVarsFiltered)
-
-    allTumorVarsFiltered   =  tumorAboveCutoffVarsFiltered.keys() + tumorLowQVarsFiltered.keys()
-    allTumorPvals  =  [v.pval for k,v in tumorAboveCutoffVarsFiltered] + \
-                      [v.pval for k,v in tumorlowQVarsFiltered]
-    # correct for FDR using Benjamini-Hotchberg
-    adjPvals = benjaminiHotchbergCorrection(allTumorPvals)
-    for i,var in enumerate(allTumorVars):
-        if var in tumorAboveCutoffVarsFiltered:
-            tumorAboveCutoffVarsFiltered[var].adjPval = adjPvals[i]
-        elif var in tumorLowQVarsVarsFiltered:
-            tumorLowQVarsVarsFiltered[var].adjPval = adjPvals[i]
-        else:
-            raise Exception("tumor_normal: Logical Error. Mimsatch in variants after FDR pval adjustment")
-
-    # parse and update cut.vcf/txt and belowThreshold lowQ file
-    f = readSetTumor + ".smCounter.cut.vcf"
-    ftype = "cutVcf"
-    applyTNFilter(f, tumorAboveCutoffVarsFiltered, allTumorVars, ftype)
-    
-    f = readSetTumor + ".smCounter.cut.txt"
-    ftype = "cutTxt"
-    applyTNFilter(f, tumorAboveCutoffVarsFiltered, allTumorVars, ftype)
-    
-    f = readSetTumor + ".smCounter.lowQ.txt"
-    ftype = "lowQ"
-    applyTNFilter(f, tumorLowQVarsFiltered, allTumorVars, ftype)
-    
-def applyTNFilter(relevantVars,allTumorVars,f,ftype):
+def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
     ''' Add information from the F.E.T test to output files
     :param str  f
-    :param dict relevantVars
-    :param dict allTumorVars
     :param str  ftype
+    :param dict tumorVarsFiltered
+    :param float pValCutoff
     '''
     # conditional to ignore header
     headerIgnore = {
         "cutVcf"  : lambda line:line.startswith("#"),
         "cutTxt"  : lambda line:line.startswith("CHROM"),
-        "lowQ"    : lambda line:line.find("CHROM")!=-1
+        "annoVcf"  : lambda line:line.startswith("#"),
+        "annoTxt"  : lambda line:line.startswith("CHROM")        
     }
     assert ftype in headerIgnore, "tumor_normal: Invalid file type : {}".format(ftype)
     
     # filter column
     filterCol = {
-        "cutVcf"  : 6,
-        "cutTxt"  : 6,
-        "lowQ"    : -1
+        "cutVcf"  :  6,
+        "cutTxt"  : -1,
+        "annoVcf" :  6,
+        "annoTxt" :  6
     }
-    # return variant key tuple from row
-    def parseVariant(ftype):
-        ''' Parse row based on file type
+
+    def simpleParseVariant(row,ftype):
+        ''' 
+        Helper function to parse multi-allelic variants from cut/anno.vcf/txt files
+        Similar to parseVariant, except does not return vmt
+        :param list row
+        :param ftype i,e, cutTxt,cutVcf,annoTxt,annoVcf
+        :return (chrom,pos,ref,alt)
         '''
-        if ftype == "lowQ":
-            yield (contents[1],contents[2],contents[3],contents[4])
+        if ftype == 'cutTxt':
+            refCol = 2            
+            altCol = 3
         else:
-            if contents[4].find(",")!=-1: # multi-allelic
-                alt1,alt2 = contents[4].split(",")
-                yield (contents[0],contents[1],contents[3],alt1)
-                yield (contents[0],contents[1],contents[3],alt2)
+            refCol = 3
+            altCol = 4            
+            
+        if row[altCol].find(",")!=-1: # multi-allelic
+            alts = row[altCol].split(",")
+            for i,alt in enumerate(alts):
+                yield (row[0],row[1],row[refCol],alt) # (chrom,pos,ref,alt)
+        else:
+            yield (row[0],row[1],row[refCol],row[altCol])
+
 
     f = f[:-1] if f.endswith('/') else f # remove trailing /
     tempFile = f + ".temp"
@@ -236,23 +212,85 @@ def applyTNFilter(relevantVars,allTumorVars,f,ftype):
             if headerIgnore[ftype](line):
                 OUT.write(line)
                 continue
-            filter = contents[filterCol(ftype)]
+            filterField = contents[filterCol[ftype]]
             tnFilter = []
-            for variant in parseVariant(contents):
-                assert variant in allTumorVars, "tumor_normal: Logical Error. Variant from all file not present in : {} file".format(ftype)
-                if variant in relevantVars: # had enough UMIs for F.E.T
-                    pval    = round(relevantVars.pval,3)
-                    adjPval = round(relevantVars.adjPval,3)
-                    tnFilter.append("-".join(["TN","pval:{p}","qval:{q}"]))
+            for variant in simpleParseVariant(contents,ftype):
+                if variant in tumorVarsFiltered: # had enough UMIs for F.E.T and was present in normal sample
+                    pval      = tumorVarsFiltered[variant].pval
+                    adjPval   = tumorVarsFiltered[variant].adjPval
+                    oddsRatio = tumorVarsFiltered[variant].oddsRatio
+                    assert pval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
+                    assert adjPval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
+                    assert oddsRatio is not None, "tumor_normal: Logical Error for variant : {}".format(variant)                    
+                    pval      = round(pval,3)
+                    adjPval   = round(adjPval,3)
+                    oddsRatio = round(oddsRatio,3)
+                    if adjPval < pValCutoff:
+                        tnFilter.append("TN/oddsRatio:{o}/pval:{p}/pvalAdj:{pAdj}".format(o=oddsRatio,p=pval,pAdj=adjPval))
             # update filter
-            if fetFilter:
-                filter = filter + ";" + ",".join(tnFilter)
-            contents[filterCol(ftype)] = filter
+            if tnFilter:
+                filterField = filterField + ";" + ",".join(tnFilter)
+
+            contents[filterCol[ftype]] = filterField
             OUT.write("\t".join(contents))
             OUT.write("\n")
 
     # replace the input file with the updated new one
-    subprocess.check_call("mv {temp} {in}".format(temp=tempFile,out=f),shell=True)
+    subprocess.check_call("mv {temp} {out}".format(temp=tempFile,out=f),shell=True)
+
+def tumorNormalVarFilter(cfg):
+    ''' Filter Tumor variants
+    '''
+    readSetNormal =  cfg.readSetMatchedNormal
+    readSetTumor  =  cfg.readSet
+    umiCutoff     =  cfg.umiCutoff # umi cutoff for F.E.T
+    pValCutoff    =  cfg.pValCutoff # cutoff for adjusted p values from F.E.T
+    print("\ntumor_normal: Started filtering Tumor variants")
+
+    # do nothing if zero variants from tumor read set
+    if not os.path.isfile(readSetTumor + ".smCounter.cut.txt"):
+        return
+
+    # parse all files for refUMI count
+    normalRefUMICounts = parseSmCounterAllFile(readSetNormal)
+    tumorRefUMICounts  = parseSmCounterAllFile(readSetTumor)
+    
+    # parse tumor anno txt, add refUMICounts to obj
+    tumorVars  = parseAnnoTxt(readSetTumor,tumorRefUMICounts)
+    # parse normal anno txt, add refUMICounts to obj
+    normalVars = parseAnnoTxt(readSetNormal,normalRefUMICounts)
+    
+    # filter variants with < 10 ref + alt UMI
+    tumorVarsTmp  =  {k:v for k,v in tumorVars.items() if v.refUMI + v.altUMI >= 10}
+    normalVarsTmp =  {k:v for k,v in normalVars.items() if v.refUMI + v.altUMI >=10}
+
+    # filter tumor variants not in normal
+    tumorVarsFiltered  = {k:v for k,v in tumorVars.items() if k in normalVarsTmp}
+    normalVarsFiltered = {k:v for k,v in normalVars.items() if k in tumorVarsFiltered} # do not need to do this, done for consistency, we won't use normalVariants for any outputs
+
+    # perform F.E.T and store pvalue and oddsRatio
+    tumorVarsFiltered = fet(tumorVarsFiltered,normalVarsFiltered)    
+
+    # store ordered pvals and variants
+    tumorPvals   = []
+    tumorVarKeys = []
+    for key in tumorVarsFiltered:
+        val = tumorVarsFiltered[key]
+        tumorPvals.append(val.pval)
+        tumorVarKeys.append(key)        
+
+    # correct for FDR using Benjamini-Hotchberg
+    adjPvals = benjaminiHotchbergCorrection(tumorPvals)    
+    for i,var in enumerate(tumorVarKeys):
+        tumorVarsFiltered[var].adjPval = adjPvals[i]
+
+    # parse and update anno,cut.vcf/txt
+    files = [readSetTumor + ".smCounter.cut.vcf", readSetTumor + ".smCounter.cut.txt",
+             readSetTumor + ".smCounter.anno.vcf", readSetTumor + ".smCounter.anno.txt"]
+    fileTypes = ["cutVcf","cutTxt","annoVcf","annoTxt"]
+    for i,f in enumerate(files):
+        applyTNFilter(f, fileTypes[i], tumorVarsFiltered,pValCutoff)
+    print("tumor_normal: Finished filtering Tumor variants")
     
 def runCopyNumberEstimates(cfg):
     ''' Run CNV analysis using quandico
@@ -359,6 +397,7 @@ def runCopyNumberEstimates(cfg):
         + " > {}.log 2>&1 ".format(filePrefix)
     print(cmd)
     subprocess.check_call(cmd, shell=True)
+    
 
 def removeNormalVariants(cfg):
     ''' Remove normal variants from tumor vcf
