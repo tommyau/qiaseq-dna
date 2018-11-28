@@ -3,7 +3,6 @@ import os
 import subprocess
 import string
 import warnings
-
 import scipy.stats
 import numpy as np
 
@@ -208,11 +207,8 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
                     assert pval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
                     assert adjPval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
                     assert oddsRatio is not None, "tumor_normal: Logical Error for variant : {}".format(variant)                    
-                    pval      = round(pval,3)
-                    adjPval   = round(adjPval,3)
-                    oddsRatio = round(oddsRatio,3)
                     if adjPval < pValCutoff:
-                        tnFilter.append("TN/oddsRatio:{o}/pval:{p}/pvalAdj:{pAdj}".format(o=oddsRatio,p=pval,pAdj=adjPval))
+                        tnFilter.append("TN/oddsRatio:%e/pval:%e/pvalAdj:%e"%(oddsRatio,pval,adjPval))
             # update filter
             if tnFilter:
                 filterField = filterField + ";" + ",".join(tnFilter)
@@ -223,6 +219,7 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
 
     # replace the input file with the updated new one
     subprocess.check_call("mv {temp} {out}".format(temp=tempFile,out=f),shell=True)
+    
 
 def tumorNormalVarFilter(cfg):
     ''' Filter Tumor variants
