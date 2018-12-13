@@ -100,7 +100,7 @@ def run(args):
         else: # create a header only anno.vcf from cut.vcf 
             vcfFileIn  = readSet + ".smCounter.cut.vcf"
             vcfFileOut = readSet + ".smCounter.anno.vcf"
-            shutil.copyfile(vcfFileIn,vcfFileout)
+            shutil.copyfile(vcfFileIn,vcfFileOut)
       
     # aggregate all summary metrics
     metrics.sum_all.run(cfg)
