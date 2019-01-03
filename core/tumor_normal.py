@@ -226,8 +226,8 @@ def tumorNormalVarFilter(cfg):
     '''
     readSetNormal =  cfg.readSetMatchedNormal
     readSetTumor  =  cfg.readSet
-    umiCutoff     =  cfg.umiCutoff # umi cutoff for F.E.T
-    pValCutoff    =  cfg.pValCutoff # cutoff for adjusted p values from F.E.T
+    umiCutoff     =  int(cfg.umiCutoff) # umi cutoff for F.E.T
+    pValCutoff    =  float(cfg.pValCutoff) # cutoff for adjusted p values from F.E.T
     print("\ntumor_normal: Started filtering Tumor variants")
 
     # do nothing if zero variants from tumor read set
