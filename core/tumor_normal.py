@@ -216,7 +216,7 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
                     contents.insert(infoInsert[ftype],"TN_FET_OddsRatio")
                     contents.insert(infoInsert[ftype]+1,"TN_FET_pval")
                     contents.insert(infoInsert[ftype]+2,"TN_FET_Adjpval")
-                    OUT.write("\n".join(contents))
+                    OUT.write("\t".join(contents))
                     OUT.write("\n")
                 continue
 
@@ -228,8 +228,12 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
             pvalTN      = []
             adjPvalTN   = []
 
+            i = 0
             for variant in simpleParseVariant(contents,ftype): # iterate over variants in this row (to handle multi-allelic sites)
-                tempFilter = filters[i]
+                if i > 0 and len(filters) == 1: # multi-allelic site, but only 1 filter value , might need to fix this upstream in smCounter makeVcf
+                    tempFilter = filters[0]
+                else:
+                    tempFilter = filters[i]
                 if variant in tumorVarsFiltered: # had enough UMIs for F.E.T and was present in normal sample
                     pval      = tumorVarsFiltered[variant].pval
                     adjPval   = tumorVarsFiltered[variant].adjPval
@@ -240,10 +244,10 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
 
                     oddsRatioTN.append("%e"%oddsRatio)
                     pvalTN.append("%e"%pval)
-                    adjPvalTN.append("%e"%adjpval)
+                    adjPvalTN.append("%e"%adjPval)
 
                     if adjPval < pValCutoff: # significant difference in UMI counts for variant allele b/w normal and tumor sample
-                        newFilter = temp_filter # keep same filter as before
+                        newFilter = tempFilter # keep same filter as before
                     else: # not a significant difference in UMI counts for variant allele b/w normal and tumor sample, label filter to reflect this
                         if tempFilter == "PASS":
                             newFilter = "TN_FET_FAIL"
@@ -256,6 +260,7 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
                     newFilter = tempFilter
 
                 newFilters.append(newFilter)
+                i+=1
 
             # update filter
             filterField = ",".join(newFilters)
@@ -272,10 +277,10 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
                 tempInfo = ";".join(tempInfoSplit)
                 contents[7] = tempInfo
             else:
-                contents.insert(infoInsert[ftype],oddsRatio)
-                contents.insert(infoInsert[ftype]+1,pval)
-                contents.insert(infoInsert[ftype]+2,adjPval)
-
+                contents.insert(infoInsert[ftype],",".join(oddsRatioTN))
+                contents.insert(infoInsert[ftype]+1,",".join(pvalTN))
+                contents.insert(infoInsert[ftype]+2,",".join(adjPvalTN))
+            print(contents)
             OUT.write("\t".join(contents))
             OUT.write("\n")
 
