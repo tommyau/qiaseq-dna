@@ -141,6 +141,27 @@ def benjaminiHotchbergCorrection(pvals):
     pAdjusted = np.minimum.accumulate(tempPAdjusted[::-1])[::-1]
     return pAdjusted[np.argsort(sorted_indices)]
 
+def simpleParseVariant(row,ftype):
+    '''
+    Helper function to parse multi-allelic variants from cut/anno.vcf/txt files
+    Similar to parseVariant, except does not return vmt
+    :param list row
+    :param ftype i,e, cutTxt,cutVcf,annoTxt,annoVcf
+    :return (chrom,pos,ref,alt)
+    '''
+    if ftype == 'cutTxt':
+        refCol = 2
+        altCol = 3
+    else:
+        refCol = 3
+        altCol = 4
+
+    if row[altCol].find(",")!=-1: # multi-allelic
+        alts = row[altCol].split(",")
+        for i,alt in enumerate(alts):
+            yield (row[0],row[1],row[refCol],alt) # (chrom,pos,ref,alt)
+    else:
+        yield (row[0],row[1],row[refCol],row[altCol])
 
 def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
     ''' Add information from the F.E.T test to output files
@@ -149,12 +170,12 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
     :param dict tumorVarsFiltered
     :param float pValCutoff
     '''
-    # conditional to ignore header
+    # conditionals to ignore header
     headerIgnore = {
         "cutVcf"  : lambda line:line.startswith("#"),
         "cutTxt"  : lambda line:line.startswith("CHROM"),
         "annoVcf"  : lambda line:line.startswith("#"),
-        "annoTxt"  : lambda line:line.startswith("CHROM")        
+        "annoTxt"  : lambda line:line.startswith("CHROM")
     }
     assert ftype in headerIgnore, "tumor_normal: Invalid file type : {}".format(ftype)
     
@@ -165,55 +186,96 @@ def applyTNFilter(f,ftype,tumorVarsFiltered,pValCutoff):
         "annoVcf" :  6,
         "annoTxt" :  6
     }
-
-    def simpleParseVariant(row,ftype):
-        ''' 
-        Helper function to parse multi-allelic variants from cut/anno.vcf/txt files
-        Similar to parseVariant, except does not return vmt
-        :param list row
-        :param ftype i,e, cutTxt,cutVcf,annoTxt,annoVcf
-        :return (chrom,pos,ref,alt)
-        '''
-        if ftype == 'cutTxt':
-            refCol = 2            
-            altCol = 3
-        else:
-            refCol = 3
-            altCol = 4            
-            
-        if row[altCol].find(",")!=-1: # multi-allelic
-            alts = row[altCol].split(",")
-            for i,alt in enumerate(alts):
-                yield (row[0],row[1],row[refCol],alt) # (chrom,pos,ref,alt)
-        else:
-            yield (row[0],row[1],row[refCol],row[altCol])
-
+    # insert positions for odds ratio and pvals
+    infoInsert = {
+        "cutTxt"  : 10,
+        "annoTxt" : 12,
+        "annoVcf" : 6,   # within the info column
+        "cutVcf"  : 6,   # within the info column
+    }
+    # new header for vcf
+    newInfoHeader = "\n".join(
+        ["##INFO=<ID=TN_FET_OddsRatio,Number=.,Type=Float,Description=\"Odds Ratio from FET of Tumor/Normal UMI Counts\">",
+         "##INFO=<ID=TN_FET_pval,Number=.,Type=Float,Description=\"p-value from FET of Tumor/Normal UMI Counts\">",
+         "##INFO=<ID=TN_FET_Adjpval,Number=.,Type=Float,Description=\"FDR corrected p-value from FET of Tumor/Normal UMI Counts\">"]
+    )
 
     f = f[:-1] if f.endswith('/') else f # remove trailing /
     tempFile = f + ".temp"
     with open(f,"r") as IN, open(tempFile,"w") as OUT:
         for line in IN:
             contents = line.strip("\n").split("\t")
-            if headerIgnore[ftype](line):
-                OUT.write(line)
+            if headerIgnore[ftype](line): # header
+                # update header
+                if ftype in ["cutVcf","annoVcf"]:
+                    OUT.write(line)
+                    if line.startswith("##INFO=<ID=VMF"):
+                        OUT.write(newInfoHeader)
+                        OUT.write("\n")
+                else:
+                    contents.insert(infoInsert[ftype],"TN_FET_OddsRatio")
+                    contents.insert(infoInsert[ftype]+1,"TN_FET_pval")
+                    contents.insert(infoInsert[ftype]+2,"TN_FET_Adjpval")
+                    OUT.write("\n".join(contents))
+                    OUT.write("\n")
                 continue
+
             filterField = contents[filterCol[ftype]]
-            tnFilter = []
-            for variant in simpleParseVariant(contents,ftype):
+            filters     = filterField.split(",")
+
+            newFilters  = []
+            oddsRatioTN = []
+            pvalTN      = []
+            adjPvalTN   = []
+
+            for variant in simpleParseVariant(contents,ftype): # iterate over variants in this row (to handle multi-allelic sites)
+                tempFilter = filters[i]
                 if variant in tumorVarsFiltered: # had enough UMIs for F.E.T and was present in normal sample
                     pval      = tumorVarsFiltered[variant].pval
                     adjPval   = tumorVarsFiltered[variant].adjPval
                     oddsRatio = tumorVarsFiltered[variant].oddsRatio
                     assert pval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
                     assert adjPval is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
-                    assert oddsRatio is not None, "tumor_normal: Logical Error for variant : {}".format(variant)                    
-                    if adjPval < pValCutoff:
-                        tnFilter.append("TN/oddsRatio:%e/pval:%e/pvalAdj:%e"%(oddsRatio,pval,adjPval))
-            # update filter
-            if tnFilter:
-                filterField = filterField + ";" + ",".join(tnFilter)
+                    assert oddsRatio is not None, "tumor_normal: Logical Error for variant : {}".format(variant)
 
+                    oddsRatioTN.append("%e"%oddsRatio)
+                    pvalTN.append("%e"%pval)
+                    adjPvalTN.append("%e"%adjpval)
+
+                    if adjPval < pValCutoff: # significant difference in UMI counts for variant allele b/w normal and tumor sample
+                        newFilter = temp_filter # keep same filter as before
+                    else: # not a significant difference in UMI counts for variant allele b/w normal and tumor sample, label filter to reflect this
+                        if tempFilter == "PASS":
+                            newFilter = "TN_FET_FAIL"
+                        else: # append new filter
+                            newFilter = tempFilter+";TN_FET_FAIL"
+                else:
+                    oddsRatioTN.append("N/A")
+                    pvalTN.append("N/A")
+                    adjPvalTN.append("N/A")
+                    newFilter = tempFilter
+
+                newFilters.append(newFilter)
+
+            # update filter
+            filterField = ",".join(newFilters)
             contents[filterCol[ftype]] = filterField
+            # update info with pvals and oddsRatio
+            if ftype in ["cutVcf","annoVcf"]:
+                oddsRatio = "TN_oddsRatio=" + ",".join(oddsRatioTN)
+                pval      = "TN_pval=" + ",".join(pvalTN)
+                adjPval   = "TN_Adjpval=" + ",".join(adjPvalTN)
+                temp = oddsRatio + ";" + pval + ";" + adjPval
+                tempInfo = contents[7]
+                tempInfoSplit = tempInfo.split(";")
+                tempInfoSplit.insert(infoInsert[ftype],temp)
+                tempInfo = ";".join(tempInfoSplit)
+                contents[7] = tempInfo
+            else:
+                contents.insert(infoInsert[ftype],oddsRatio)
+                contents.insert(infoInsert[ftype]+1,pval)
+                contents.insert(infoInsert[ftype]+2,adjPval)
+
             OUT.write("\t".join(contents))
             OUT.write("\n")
 
