@@ -376,8 +376,8 @@ def run(cfg,bamFileIn):
     os.rename(fileName + ".tmp", fileName)
     
     # stop pipeline if very few reads on-target
-    if readPairsPrimerFoundOnTargetPctOfAll < 5:
-        raise UserWarning("< 5% on-target reads found for read set: " + readSet)
+    if readPairsPrimerFoundOnTargetPctOfAll < 5 and readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
+        raise UserWarning("< 5 percent or < 50 on-target read fragments found for read set: {}".format(readSet))
   
     # report completion
     print("umi_filter: done")
