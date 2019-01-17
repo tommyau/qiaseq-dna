@@ -85,7 +85,9 @@ def run(cfg):
         umiC = samVals[ 9][0:12]
         umiQ = samVals[10][0:12]
         if umiC != umi:
-            raise Exception("unexpected barcode sync")
+            raise UserWarning("unexpected barcode sync") # all the cases I have seen for this exception 
+                                                         # are because the input bam is an aligned one,
+                                                         # need an unaligned bam for Ion Readsets
 
         # get trimmed sequences
         seq3  = vals3[5] + vals3[6]             # 6 should be empty string
