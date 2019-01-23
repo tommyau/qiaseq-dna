@@ -137,7 +137,7 @@ def run_tumor_normal(readSet,paramFile,vc):
     run((tumor,paramFile,vc))
     ## Additional analysis steps
     cfg = core.run_config.run(tumor,paramFile)
-    core.tumor_normal.tumorNormalVarFilter(cfg)
+    core.tumor_normal.removeNormalVariants(cfg)
     core.tumor_normal.runCopyNumberEstimates(cfg)
  
 #-------------------------------------------------------------------------------------
