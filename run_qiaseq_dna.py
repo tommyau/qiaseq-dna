@@ -1,6 +1,7 @@
 import ConfigParser
 import sys
 import multiprocessing
+import shutil
 # our modules
 import core.run_log
 import core.run_config
@@ -95,7 +96,11 @@ def run(args):
             # annotate variants in the VCF file
             vcfFileIn  = readSet + ".smCounter.cplx.vcf"
             vcfFileOut = readSet + ".smCounter.anno.vcf"
-            annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut,vc)        
+            annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut,vc)
+        else: # create a header only anno.vcf from cut.vcf 
+            vcfFileIn  = readSet + ".smCounter.cut.vcf"
+            vcfFileOut = readSet + ".smCounter.anno.vcf"
+            shutil.copyfile(vcfFileIn,vcfFileOut)
       
     # aggregate all summary metrics
     metrics.sum_all.run(cfg)
