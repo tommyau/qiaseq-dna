@@ -1,10 +1,15 @@
 import collections
 import os
+import numpy as np
+import shutil
 import subprocess
 import string
 import warnings
 import scipy.stats
-import numpy as np
+
+# our modules
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+vcf = __import__("qiaseq-smcounter-v2.vcf")
 
 # some constants, learned from existing datasets
 _a_ = 0.381774 # het vmf lower bound
@@ -227,6 +232,8 @@ def tumorNormalVarFilter(cfg):
     readSetTumor  =  cfg.readSet
     umiCutoff     =  int(cfg.umiCutoff) # umi cutoff for F.E.T
     pValCutoff    =  float(cfg.pValCutoff) # cutoff for adjusted p values from F.E.T
+    tumorPurity   =  float(cfg.tumorPurity)
+
     print("\ntumor_normal: Started filtering Tumor variants")
 
     # do nothing if zero variants from tumor read set
@@ -273,13 +280,26 @@ def tumorNormalVarFilter(cfg):
     del(tumorPvals)
     del(tumorVarKeys)
 
+    # update varClass
+    for key in tumorVarsFiltered:
+        tumorVarsFiltered.classifyVar(
+            normalVarsFiltered[key].vmf, tumorPurity)
+
     # parse and update all.txt file
-    tempFile = readSetTumor + ".smCounter.all.temp.txt"
+    tempFile1 = readSetTumor + ".smCounter.all.temp.txt"
     updateFilter(tempFile, tumorVarsFiltered, isTumor = True)
-    tempFile = readSetNormal + ".smCounter.all.temp.txt"
+    tempFile2 = readSetNormal + ".smCounter.all.temp.txt"
     updateFilter(tempFile, tumorVarsFiltered, isTumor = False)
 
+    # backup smCounter all files
+    shutil.copyfile(readSetTumor + ".smCounter.all.txt",
+                    readSetTumor + ".smCounter.all.txt.bak")
+    shutil.copyfile(readSetNormal + ".smCounter.all.txt",
+                    readSetNormal + ".smCounter.all.txt.bak")
+
     # re-run smCounter vcf creation module
+    vcf.makeVcf('./', tempFile1, readSetTumor, cfg.genomeFile, tumorNormal = True)
+    vcf.makeVcf('./', tempFile2, readSetNormal, cfg.genomeFile, tumorNormal = True)
 
 
 def runCopyNumberEstimates(cfg):
