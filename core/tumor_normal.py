@@ -41,15 +41,16 @@ class Variant(object):
         self.adjPval     = None
         self.varclass    = None
 
-    def classifyVar(self, nvmf, p):
+    def classifyVar(self, nvmf, p, cutoff):
         ''' Used for tumor variants
         :param float nvmf : Normal variant UMI allele frequency
         :param float p    : Tumor Purity
+        :param float cutoff : pValue cutoff for FET
 
         :returns Variant classification, i.e. Germline_Risk, Somatic, LOH (Loss of Heterozygocity)
         :rtype string
         '''
-        if self.adjPval >= 0.01:
+        if self.adjPval >= cutoff:
             self.varclass = 'Germline_Risk'
         
         else:
@@ -317,7 +318,7 @@ def tumorNormalVarFilter(cfg):
     # update varClass
     for variant_key in tumorVarsFiltered:
         tumorVarsFiltered[variant_key].classifyVar(
-            _normalAllVars_[variant_key].vmf, tumorPurity)
+            _normalAllVars_[variant_key].vmf, tumorPurity, pValCutoff)
 
     # parse and update all.txt file
     tempFile1 = readSetTumor + ".smCounter.all.temp.txt"
