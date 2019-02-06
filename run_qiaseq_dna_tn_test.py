@@ -59,14 +59,14 @@ def run_tumor_normal(readSet,paramFile,vc):
     assert tumor!=None and normal!=None, "Could not sync read set names supplied with config file !"
 
     # initialize logger
-    core.run_log.init(normal)    
-    run((normal,paramFile,vc))
+    #core.run_log.init(normal)    
+    #run((normal,paramFile,vc))
     # close log file
-    core.run_log.close()
+    #core.run_log.close()
 
     # initialize logger
     core.run_log.init(tumor)
-    run((tumor,paramFile,vc))    
+    #run((tumor,paramFile,vc))    
     ## Additional analysis steps
     cfg = core.run_config.run(tumor,paramFile)
     core.tumor_normal.tumorNormalVarFilter(cfg)
