@@ -56,7 +56,7 @@ class Variant(object):
         else:
             if self.vmf > nvmf:
                 if (self.vmf > (p * _c_ + (1 - p) * nvmf) and \
-                    (self._a <= nvmf <= _b_)):
+                    (_a_ <= nvmf <= _b_)):
                     self.varclass = 'LOH'
                 else:
                     self.varclass = 'Somatic'
