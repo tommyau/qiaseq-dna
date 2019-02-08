@@ -74,7 +74,7 @@ def run(cfg, vcfFileIn, vcfFileOut,vc):
     colNames = ["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER"]
     tagsNeeded = {
        'v1':("TYPE", "DP", "MT", "UMT", "PI", "THR", "VMT", "VMF", "VSM"),
-       'v2':("TYPE","RepRegion","DP","UMT","VMT","VMF")
+       'v2':("TYPE","RepRegion","TNB","DP","UMT","VMT","VMF")
        }
     colNames.extend(tagsNeeded[vc])
     numAnnCols = None
