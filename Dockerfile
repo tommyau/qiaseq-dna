@@ -33,18 +33,19 @@ RUN cd /srv/qgen/bin/ && \
 ################ Install python modules ################
 ## Install some modules with conda
 RUN conda install scipy MySQL-python openpyxl pysam=0.9.0
-RUN pip install statistics
+RUN pip install statistics edlib
 ## Download and install 3rd party libraries
-RUN wget https://storage.googleapis.com/qiaseq-dna/lib/py-editdist-0.3.tar.gz https://storage.googleapis.com/qiaseq-dna/lib/sendgrid-v2.2.1.tar.gz -P /srv/qgen/bin/downloads/
-RUN cd /srv/qgen/bin/downloads/ && \
-    tar -xvf py-editdist-0.3.tar.gz && \
-    cd py-editdist-0.3 && \
-    /opt/conda/bin/python setup.py install && \
-    cd /srv/qgen/bin/downloads/ && \
-    tar -xvf sendgrid-v2.2.1.tar.gz && \
-    cd sendgrid-python-2.2.1 && \
-    /opt/conda/bin/python setup.py install
-    
+RUN wget https://storage.googleapis.com/qiaseq-dna/lib/py-editdist-0.3.tar.gz \
+	 https://storage.googleapis.com/qiaseq-dna/lib/sendgrid-v2.2.1.tar.gz \
+	 https://github.com/weizhongli/cdhit/releases/download/V4.6.8/cd-hit-v4.6.8-2017-1208-source.tar.gz \
+	 -P /srv/qgen/bin/downloads/
+RUN cd /srv/qgen/bin/downloads/ && tar -xvf py-editdist-0.3.tar.gz && \
+    cd py-editdist-0.3 && /opt/conda/bin/python setup.py install && \
+    cd /srv/qgen/bin/downloads/ && tar -xvf sendgrid-v2.2.1.tar.gz && \
+    cd sendgrid-python-2.2.1 && /opt/conda/bin/python setup.py install && \
+    cd /srv/qgen/bin/downloads/ && tar -xvf cd-hit-v4.6.8-2017-1208-source.tar.gz && \
+    cd cd-hit-v4.6.8-2017-1208 && make
+
 ################ R packages ################
 RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile
 RUN Rscript -e "install.packages('plyr')"
