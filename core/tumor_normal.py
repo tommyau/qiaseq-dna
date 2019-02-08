@@ -78,7 +78,7 @@ def getNumVariants(readSet):
     :param str readSet: The readSet name
     '''
     n = 0
-    with open(readSet + '.cut.txt', 'r') as IN:
+    with open(readSet + '.smCounter.cut.txt', 'r') as IN:
         for line in IN:
             n+=1
 
