@@ -153,10 +153,10 @@ def run_tumor_normal(readSet,paramFile,vc):
     print("--"*20)
 
     ## Create cplx,anno.txt/vcf and sum.all files
-    numVariants = tumor_normal.getNumVariants(tumor)
+    numVariants = core.tumor_normal.getNumVariants(tumor)
     post_smcounter_work(numVariants, tumor, cfg)
     print("--"*20)
-    numVariants = tumor_normal.getNumVariants(normal)
+    numVariants = core.tumor_normal.getNumVariants(normal)
     cfg = core.run_config.run(normal,paramFile)
     post_smcounter_work(numVariants, normal, cfg)
     print("--"*20)
