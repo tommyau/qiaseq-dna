@@ -1,4 +1,6 @@
 import collections
+import copy
+import operator
 import os
 import math
 import multiprocessing
@@ -41,6 +43,9 @@ class Variant(object):
         self.adjPval     = None
         self.varclass    = None
 
+        # for HomRef Tumor Variants, store the corresponding normal variant key
+        self.normalVarKey = None
+
     def classifyVar(self, nvmf, p, cutoff):
         ''' Used for tumor variants
         :param float nvmf : Normal variant UMI allele frequency
@@ -79,6 +84,7 @@ def getNumVariants(readSet):
 
     return n-1
 
+
 def iterateSmCounterAllFile(readSet):
     ''' Yield line by line
     :param str readSet
@@ -90,13 +96,15 @@ def iterateSmCounterAllFile(readSet):
             yield contents
             continue
 
+
 def parseSmCounterAllFile(readSet):
     ''' Parse smCounter all file
     Enforce pval cutoffs if needed
     :param str  readSet
     '''
     # container to store variants
-    allVars = collections.defaultdict(Variant)
+    allVars    = collections.defaultdict(Variant)
+    homRefVars = collections.defaultdict(list)
     
     # parse smCounter all.txt file
     with open(readSet + ".smCounter.all.txt", "r") as IN:
@@ -136,43 +144,83 @@ def parseSmCounterAllFile(readSet):
             else:
                 raise Exception("tumor_normal: LogicalError. Could not discern correct reference base and umi count.")
             allVars[key].refUMI  = refUMI
-            allVars[key].altUMI  = sVMT
+            allVars[key].altUMI  = int(sVMT)
             allVars[key].vmf     = sVMF
             allVars[key].qual    = fQUAL
             allVars[key].vartype = TYPE.upper()
 
+            sUMT = int(sUMT)
+            refAlleleFreq = float(refUMI)/sUMT
+            if(refAlleleFreq >= _c_ and fQUAL < 2.00): # check if variant is homozygous ref
+                key2 = (CHROM, POS, REF)
+                homRefVars[key2].append(copy.deepcopy(allVars[key]))
 
-    return allVars
+    return (allVars, homRefVars)
 
-
-def fet(variant_key):
-    ''' Perform fisher's exact test
-    :param tuple variant_key, i.e. (chrom,pos,ref,alt)
+def handleTumorHomRefVars():
+    ''' Create a dummy variant key in _tumorAllVars_ for :
+    Homozygous Reference Tumor sites where the Normal Sample has a Heterozygous Variant.
+    The alt allele is different in the Tumor and Normal at these sites
+    Store a dummy variant at this site with the same alt allele as the Normal
     '''
-    if variant_key not in _tumorAllVars_:
-        return (-1, -1, variant_key)
+    global _normalAllVars_
+    global _tumorAllVars_
+    found = False
+
+    for variantKey in _normalAllVars_:
+
+        if variantKey not in _tumorAllVars_:
+
+            if (_a_ <= _normalAllVars_[variantKey].vmf <= _b_): # check if normal is Het
+                chrom, pos, ref, alt = variantKey
+                key2 = (chrom, pos, ref)
+
+                if key2 in _tumorHomRefVars_: # check if tumor is Hom Ref
+                    found = True
+                    
+                    # if > 2 variants at this site, pick the one with highest variant UMI count
+                    sortedAlts = sorted([(variant.altUMI,variant) for variant in \
+                                         _tumorHomRefVars_[key2]],
+                                        key = operator.itemgetter(0),
+                                        reverse = True)
+
+                    variant = sortedAlts[0][1]
+                    _tumorAllVars_[variantKey] = variant
+                    for i in range(len(_tumorHomRefVars_[key2])):
+                        _tumorHomRefVars_[key2][i].normalVarKey = variantKey
+                    # if normal has 2 het sites , could get two possible variants here to store, current logic will keep only last one, but the LOH filter at this site should still be captured in the tumor.
+                    # an example : Normal : A->C (38%vmf) ; A->T (38%vmf)
+                    #              Tumor  : A->G (1%vmf, i.e. 99% ref, QUAL should be < 2 as well)
+
+
+def fet(variantKey):
+    ''' Perform fisher's exact test
+    :param tuple variantKey, i.e. (chrom,pos,ref,alt)
+    '''
+    if variantKey not in _tumorAllVars_:
+        return (-1, -1, variantKey)
 
     # log(pval) cutoffs
     cutoff = 6
     minCutoff = {"INDEL":2,"SNP":2} ## Cutoff for low PI file
 
-    qualNormal   =  _normalAllVars_[variant_key].qual
-    qualTumor    =  _tumorAllVars_[variant_key].qual
+    qualNormal   =  _normalAllVars_[variantKey].qual
+    qualTumor    =  _tumorAllVars_[variantKey].qual
 
-    if qualNormal >= minCutoff[_tumorAllVars_[variant_key].vartype] or \
-       qualTumor >= minCutoff[_normalAllVars_[variant_key].vartype]:
+    if qualNormal >= cutoff or \
+       qualTumor >= cutoff:
 
-        refUMITumor  =  _tumorAllVars_[variant_key].refUMI
-        altUMITumor  =  _tumorAllVars_[variant_key].altUMI
-        refUMINormal =  _normalAllVars_[variant_key].refUMI
-        altUMINormal =  _normalAllVars_[variant_key].altUMI
+        refUMITumor  =  _tumorAllVars_[variantKey].refUMI
+        altUMITumor  =  _tumorAllVars_[variantKey].altUMI
+        refUMINormal =  _normalAllVars_[variantKey].refUMI
+        altUMINormal =  _normalAllVars_[variantKey].altUMI
    
         # do F.E.T
         oddsRatio, pval = scipy.stats.fisher_exact(
             [[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
-        return (pval, oddsRatio, variant_key)
+        return (pval, oddsRatio, variantKey)
     else:
-        return (-1, -1, variant_key)
+        return (-1, -1, variantKey)
 
 
 def benjaminiHotchbergCorrection(pvals):
@@ -221,6 +269,18 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, isTumor):
         
         adjPval = '.'
         oddsRatio = '.'
+        
+        if isTumor and variantKey not in tumorVarsFiltered:
+            key2 = (row[0], row[1], row[2])
+            if key2 in _tumorHomRefVars_:
+                normalKey = _tumorHomRefVars_[key2][0].normalVarKey # updated variant key
+                if normalKey is None: # this site was not evaluated
+                    #print("debug:variant : {} was not evaluated".format(variantKey))
+                    pass
+                else:
+                    variantKey = normalKey # update variantKey to point to normal Het variant used to represent this site
+                    assert variantKey in tumorVarsFiltered, "LogicalError!"
+
         if variantKey in tumorVarsFiltered:
             adjPval   = tumorVarsFiltered[variantKey].adjPval
             oddsRatio = tumorVarsFiltered[variantKey].oddsRatio
@@ -261,8 +321,9 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, isTumor):
 def tumorNormalVarFilter(cfg):
     ''' Filter Tumor variants
     '''
-    global _normalAllVars_
-    global _tumorAllVars_
+    global _normalAllVars_   # key : (chrom, pos, ref, alt)
+    global _tumorAllVars_    # key : (chrom, pos, ref, alt)
+    global _tumorHomRefVars_ # key : (chrom, pos, ref)
 
     readSetNormal =  cfg.readSetMatchedNormal
     readSetTumor  =  cfg.readSet
@@ -277,9 +338,13 @@ def tumorNormalVarFilter(cfg):
         return
 
     # parse smCounter all.txt files
-    _normalAllVars_ = parseSmCounterAllFile(readSetNormal)
-    _tumorAllVars_  = parseSmCounterAllFile(readSetTumor)
-    
+    _normalAllVars_, normalHomRefVars = parseSmCounterAllFile(readSetNormal)
+    del(normalHomRefVars) # don't need these
+    _tumorAllVars_, _tumorHomRefVars_ = parseSmCounterAllFile(readSetTumor)
+    # match up alt alleles with normal at tumor hom ref sites
+    # globals will be updated
+    handleTumorHomRefVars()
+
     # perform F.E.T in parallel and store pvalue and oddsRatio
     pool = multiprocessing.Pool(int(cfg.numCores))
     for result in pool.imap_unordered(
@@ -316,9 +381,9 @@ def tumorNormalVarFilter(cfg):
     del(tumorVarKeys)
 
     # update varClass
-    for variant_key in tumorVarsFiltered:
-        tumorVarsFiltered[variant_key].classifyVar(
-            _normalAllVars_[variant_key].vmf, tumorPurity, pValCutoff)
+    for variantKey in tumorVarsFiltered:
+        tumorVarsFiltered[variantKey].classifyVar(
+            _normalAllVars_[variantKey].vmf, tumorPurity, pValCutoff)
 
     # parse and update all.txt file
     tempFile1 = readSetTumor + ".smCounter.all.temp.txt"
