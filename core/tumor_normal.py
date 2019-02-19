@@ -392,6 +392,10 @@ def tumorNormalVarFilter(cfg):
     updateFilter(readSetNormal, tempFile2, tumorVarsFiltered, isTumor = False)
 
     # backup smCounter all files
+    shutil.copyfile(readSetTumor + ".smCounter.cut.txt",
+                    readSetTumor + ".smCounter.cut.txt.bak")
+    shutil.copyfile(readSetNormal + ".smCounter.cut.txt",
+                    readSetNormal + ".smCounter.cut.txt.bak")
     shutil.copyfile(readSetTumor + ".smCounter.all.txt",
                     readSetTumor + ".smCounter.all.txt.bak")
     shutil.copyfile(readSetNormal + ".smCounter.all.txt",
