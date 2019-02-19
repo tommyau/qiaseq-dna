@@ -49,7 +49,8 @@ cosmicFile   = /srv/qgen/data/annotation/CosmicAllMuts_v69_20140602.vcf.gz
 clinVarFile  = /srv/qgen/data/annotation/clinvar_20160531.vcf.gz
 
 # tumor-normal params
-umiCutoff = 10 # not being used currently
+# umiCutoff not being used currently
+umiCutoff = 10
 pValCutoff = 0.01
 tumorPurity  = 0.90
 
