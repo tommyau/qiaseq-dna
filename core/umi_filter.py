@@ -199,11 +199,11 @@ def run(cfg,bamFileIn):
             primer = None
             primerLen = 0
         else:
-            (chrom,primerStrand,loc3) = primerInfo.split("-")
+            (chrom,primerStrand,loc3,primerLen) = primerInfo.split("-")
             loc3 = int(loc3)
             primerStrand = int(primerStrand)
             primer = primerSeq[(chrom,primerStrand,loc3)]
-            primerLen = len(primer)
+            primerLen = int(primerLen)
             loc5 = loc3 - primerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1         
          
         # bases to adjust for removed bases from 5' of primer

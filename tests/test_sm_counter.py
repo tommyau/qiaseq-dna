@@ -54,7 +54,7 @@ def validate_umi_read_frags_metrics(metrics_file):
     ## Parse the values from the summary file first
     metrics = utils.parse_summary_file(metrics_file)
     assert utils.compare_with_tolerance(metrics["UMIs"],UMIs,0.02) is True
-    assert utils.compare_with_tolerance(metrics["read fragments per MT, mean"],READS_PER_MT,0.02) is True
+    assert utils.compare_with_tolerance(metrics["read fragments per UMI, mean"],READS_PER_MT,0.02) is True
     assert utils.compare_with_tolerance(metrics["% of reads from internal downstream priming"],READS_FROM_INTERNAL_DOWNSTREAM_PRIMING,0.02) is True
 
 def validate_umi_filter_metrics(metrics_file):

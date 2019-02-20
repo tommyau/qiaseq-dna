@@ -18,7 +18,7 @@ import sys
 
 ## Run this test as follows :
 ## sudo docker pull rpadmanabhan9/qiaseq-dna
-## sudo docker run -v /home/your_fav_dir:/mnt/qiaseq-run/ rpadmanabhan9/qiaseq-dna /bin/bash -c "cd /srv/qgen/code/; git clone https://qiauser:anz2teu@github.com/qiaseq/qiaseq-dna.git; cd qiaseq-dna; python tests/simulate_tests.py True;"
+## sudo docker run -v /home/your_fav_dir:/mnt/qiaseq-run/ rpadmanabhan9/qiaseq-dna /bin/bash -c "cd /srv/qgen/code/; git clone https://github.com/qiaseq/qiaseq-dna.git; cd qiaseq-dna; python tests/simulate_tests.py True;"
 
 
 ########## smCounter ##########
