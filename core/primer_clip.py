@@ -203,12 +203,11 @@ def run(cfg, bamFileIn, bamFileOut, resampleOnly):
             designSite = read.get_tag("pr")
             
             # parse primer design site
-            (chrom, strand, loc5, primerLen) = designSite.split("-")
+            (chrom, strand, loc3, primerLen) = designSite.split("-")
             primerLen = int(primerLen)
             strand = int(strand)
-            loc5 = int(loc5)
-            loc3 = loc5 + primerLen - 1 if strand == 0 else loc5 - primerLen + 1
-        
+            loc3 = int(loc3)
+            loc5 = loc3 - primerLen + 1 if strand == 0 else loc3 + primerLen - 1        
             # save the read alignment orientation
             aligmentReoriented = (read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2)
             

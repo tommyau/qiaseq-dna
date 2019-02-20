@@ -246,7 +246,7 @@ def main(R1_fastq,R2_fastq,R1_fastq_out,R2_fastq_out,primer_file,primer_file_clu
 
             else: # found primer
                 chrom,pos,strand,seq,p_len,similar_primers = primers[primer]
-                primer_info = chrom+"-"+strand+"-"+pos
+                primer_info = chrom+"-"+strand+"-"+pos+"-"+str(len(primer))
                 trimmed_R1+=1
                 # re-format read id
                 if update_read_id:

@@ -65,10 +65,9 @@ def run(cfg,bamFileIn):
         (pChrom, pStrand, mtLoc, mt, mtReads, mtReads_, mtReadIdx, isResample, fragLen, pLoc5, primer, umiSeq, alignLocR, alignLocP, readId, read1L, read1R, cigar1, read2L, read2R, cigar2) = line.strip().split("|")
         numReadsUmiFile += 1
   
-        # format SAM tag with UMI tag and primer tag
+        # format SAM tag with UMI tag
         tagUmi    = "-".join((pChrom, pStrand, mtLoc, mt))
-        tagPrimer = "-".join((pChrom, pStrand, pLoc5, str(len(primer))))
-        
+                
         # spin the sam forward to this read
         numReadsFound = 0
         while True:
@@ -85,7 +84,6 @@ def run(cfg,bamFileIn):
             # put the UMI tag first, in case need to sort the SAM by unique molecule
             outvec = vals[0:11]
             outvec.append(tagNameUmi      + ":Z:" + tagUmi)
-            outvec.append(tagNamePrimer   + ":Z:" + tagPrimer)
             outvec.append(tagNameResample + ":i:" + isResample)
             outvec.extend(vals[11:])
       
@@ -97,6 +95,7 @@ def run(cfg,bamFileIn):
             
             # write auxillary file containing the primer at the start of each molecule
             if numReadsFound == 1 and int(mtReadIdx) == 0:
+                tagPrimer = "-".join((pChrom, pStrand, pLoc5, str(len(primer))))
                 fileout.write("{}|{}\n".format(tagUmi,tagPrimer))
              
             # found both R1 and R2 rows
