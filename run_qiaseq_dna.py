@@ -118,7 +118,7 @@ def post_smcounter_work(numVariants, readSet, cfg, tumorNormal):
         shutil.copyfile(vcfFileIn,vcfFileOut)
         
     # aggregate all metrics
-    metrics.sum_all(cfg)
+    metrics.sum_all.run(cfg)
 
 def run_tumor_normal(readSet,paramFile,vc):
     ''' Wrapper for tumor-normal analysis
