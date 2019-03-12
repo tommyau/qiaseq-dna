@@ -88,15 +88,17 @@ def run(args,tumorNormal):
    
         # create complex variants, and annotate using snpEff
         if not tumorNormal:
-            post_smcounter_work(numVariants, readSet, cfg)
+            post_smcounter_work(numVariants, readSet, cfg, tumorNormal=False)
             # close log file
             core.run_log.close()
+
  
-def post_smcounter_work(numVariants, readSet, cfg):
+def post_smcounter_work(numVariants, readSet, cfg, tumorNormal):
     ''' Additional Steps after smCounter
     :param int numVariants
     :param str readSet
     :param lambda obj cfg
+    :param bool tumorNormal 
     '''
     if numVariants > 0:
         # convert nearby primitive variants to complex variants
@@ -108,7 +110,7 @@ def post_smcounter_work(numVariants, readSet, cfg):
         # annotate variants in the VCF file
         vcfFileIn  = readSet + ".smCounter.cplx.vcf"
         vcfFileOut = readSet + ".smCounter.anno.vcf"
-        annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut,vc)
+        annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut, vc, tumorNormal)
 
     else: # create a header only anno.vcf from cut.vcf 
         vcfFileIn  = readSet + ".smCounter.cut.vcf"
@@ -155,11 +157,11 @@ def run_tumor_normal(readSet,paramFile,vc):
 
     ## Create cplx,anno.txt/vcf and sum.all files
     numVariants = core.tumor_normal.getNumVariants(tumor)
-    post_smcounter_work(numVariants,tumor, cfg)
+    post_smcounter_work(numVariants,tumor, cfg, tumorNormal=True)
     print("--"*20)
     numVariants = core.tumor_normal.getNumVariants(normal)
     cfg = core.run_config.run(normal,paramFile)
-    post_smcounter_work(numVariants,normal, cfg)
+    post_smcounter_work(numVariants,normal, cfg, tumorNormal=True)
     print("--"*20)
 
     ## Run old variant substraction code if using v1
