@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-def run(cfg, vcfFileIn, vcfFileOut,vc):
+def run(cfg, vcfFileIn, vcfFileOut,vc, tumorNormal):
     #-------------------------------
     # part 1 - annotate VCF
     #-------------------------------
@@ -72,9 +72,13 @@ def run(cfg, vcfFileIn, vcfFileOut,vc):
     # open output file, prepare column headers
     fileout = open(readSet + ".smCounter.anno.txt", "w")   
     colNames = ["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER"]
+    if tumorNormal:
+        infoForv2 = ("TYPE","RepRegion","TNB","DP","UMT","VMT","VMF")
+    else:
+        infoForv2 = ("TYPE","RepRegion","DP","UMT","VMT","VMF")
     tagsNeeded = {
        'v1':("TYPE", "DP", "MT", "UMT", "PI", "THR", "VMT", "VMF", "VSM"),
-       'v2':("TYPE","RepRegion","DP","UMT","VMT","VMF")
+       'v2':infoForv2
        }
     colNames.extend(tagsNeeded[vc])
     numAnnCols = None

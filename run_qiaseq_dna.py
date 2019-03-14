@@ -28,10 +28,11 @@ import annotate.vcf_annotate
 #--------------------------------------------------------------------------------------
 # call input molecules, build consenus reads, align to genome, trim primer region
 #--------------------------------------------------------------------------------------
-def run(args):
+def run(args,tumorNormal):
     readSet, paramFile, vc = args
     # initialize logger
-    core.run_log.init(readSet)
+    if not tumorNormal:
+        core.run_log.init(readSet)
  
     # read run configuration file to memory
     cfg = core.run_config.run(readSet,paramFile)
@@ -86,31 +87,41 @@ def run(args):
             numVariants = misc.tvc.smCounterFilter(cfg,vc)
    
         # create complex variants, and annotate using snpEff
-        if numVariants > 0:
-            # convert nearby primitive variants to complex variants
-            bamFileIn  = readSet + ".bam"
-            vcfFileIn  = readSet + ".smCounter.cut.vcf"
-            vcfFileOut = readSet + ".smCounter.cplx.vcf"
-            annotate.vcf_complex.run(cfg, bamFileIn, vcfFileIn, vcfFileOut, vc)
+        if not tumorNormal:
+            post_smcounter_work(numVariants, readSet, cfg, tumorNormal=False)
+            # close log file
+            core.run_log.close()
+
+ 
+def post_smcounter_work(numVariants, readSet, cfg, tumorNormal):
+    ''' Additional Steps after smCounter
+    :param int numVariants
+    :param str readSet
+    :param lambda obj cfg
+    :param bool tumorNormal 
+    '''
+    if numVariants > 0:
+        # convert nearby primitive variants to complex variants
+        bamFileIn  = readSet + ".bam"
+        vcfFileIn  = readSet + ".smCounter.cut.vcf"
+        vcfFileOut = readSet + ".smCounter.cplx.vcf"
+        annotate.vcf_complex.run(cfg, bamFileIn, vcfFileIn, vcfFileOut, vc)
             
-            # annotate variants in the VCF file
-            vcfFileIn  = readSet + ".smCounter.cplx.vcf"
-            vcfFileOut = readSet + ".smCounter.anno.vcf"
-            annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut,vc)
-        else: # create a header only anno.vcf from cut.vcf 
-            vcfFileIn  = readSet + ".smCounter.cut.vcf"
-            vcfFileOut = readSet + ".smCounter.anno.vcf"
-            shutil.copyfile(vcfFileIn,vcfFileOut)
-      
-    # aggregate all summary metrics
+        # annotate variants in the VCF file
+        vcfFileIn  = readSet + ".smCounter.cplx.vcf"
+        vcfFileOut = readSet + ".smCounter.anno.vcf"
+        annotate.vcf_annotate.run(cfg, vcfFileIn, vcfFileOut, vc, tumorNormal)
+
+    else: # create a header only anno.vcf from cut.vcf 
+        vcfFileIn  = readSet + ".smCounter.cut.vcf"
+        vcfFileOut = readSet + ".smCounter.anno.vcf"
+        shutil.copyfile(vcfFileIn,vcfFileOut)
+        
+    # aggregate all metrics
     metrics.sum_all.run(cfg)
-    
-    # close log file
-    core.run_log.close()
- 
- 
+
 def run_tumor_normal(readSet,paramFile,vc):
-    ''' Wrapper around run() for tumor-normal analysis
+    ''' Wrapper for tumor-normal analysis
     '''
     # 2 read set names which are space delimited
     readSets = filter(None,readSet.split(" "))
@@ -132,14 +143,40 @@ def run_tumor_normal(readSet,paramFile,vc):
                     tumor = section
      
     assert tumor!=None and normal!=None, "Could not sync read set names supplied with config file !"
-   
-    run((normal,paramFile,vc))
-    run((tumor,paramFile,vc))
-    ## Additional analysis steps
-    cfg = core.run_config.run(tumor,paramFile)
-    core.tumor_normal.removeNormalVariants(cfg)
+    core.run_log.init(tumor)
+    run((tumor,paramFile,vc),tumorNormal=True)
+    print("--"*20)
+    run((normal,paramFile,vc),tumorNormal=True)
+
+    ## Compare Tumor Normal variants and update filter
+    if vc == 'v2': # use new TN filter
+        print("--"*20)
+        cfg = core.run_config.run(tumor,paramFile)
+        core.tumor_normal.tumorNormalVarFilter(cfg)
+        print("--"*20)
+
+    ## Create cplx,anno.txt/vcf and sum.all files
+    numVariants = core.tumor_normal.getNumVariants(tumor)
+    post_smcounter_work(numVariants,tumor, cfg, tumorNormal=True)
+    print("--"*20)
+    numVariants = core.tumor_normal.getNumVariants(normal)
+    cfg = core.run_config.run(normal,paramFile)
+    post_smcounter_work(numVariants,normal, cfg, tumorNormal=True)
+    print("--"*20)
+
+    ## Run old variant substraction code if using v1
+    if vc == 'v1':
+        print("--"*20)
+        print('Warning: Doing naive substraction of normal variants from tumor. Please use smCounter-v2  for newer Tumor-Normal variant Filter')
+        cfg = core.run_config.run(tumor,paramFile)
+        core.tumor_normal.removeNormalVariants(cfg)
+
+    ## Run Quandico for CNV    
     core.tumor_normal.runCopyNumberEstimates(cfg)
- 
+
+    # close log file
+    core.run_log.close()
+
 #-------------------------------------------------------------------------------------
 # main program for running from shell 
 #-------------------------------------------------------------------------------------
@@ -157,6 +194,6 @@ if __name__ == "__main__":
     if analysis.lower() == "tumor-normal":      
         run_tumor_normal(readSet,paramFile,vc)
     else: # Single sample, might still need to run quandico
-        run((readSet,paramFile,vc))
+        run((readSet,paramFile,vc),tumorNormal = False)
         cfg = core.run_config.run(readSet,paramFile)
         core.tumor_normal.runCopyNumberEstimates(cfg)
