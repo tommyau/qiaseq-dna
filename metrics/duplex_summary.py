@@ -2,7 +2,7 @@ from collections import defaultdict
 import sys
 
 import pysam
-
+import numpy as np
 
 # metrics
 TOTAL_UMIS = 0
@@ -28,7 +28,16 @@ NUM_UMIS_ATLEAST_2_CC_OR_TT_READ_FRAGS = 15
 DUPLEX_UMIS = 16
 DUPLEX_RATE = 17
 
-NUM_METRICS_TOTAL = 18
+MEAN_USABLE_UMI_RPU = 18
+PERCENTILE_USABLE_UMI_RPU_25 = 19
+PERCENTILE_USABLE_UMI_RPU_50 = 20
+PERCENTILE_USABLE_UMI_RPU_75 = 21
+MEAN_DUPLEX_UMI_RPU = 22
+PERCENTILE_DUPLEX_UMI_RPU_25 = 23
+PERCENTILE_DUPLEX_UMI_RPU_50 = 24
+PERCENTILE_DUPLEX_UMI_RPU_75 = 25
+
+NUM_METRICS_TOTAL = 26
 
 def run(cfg):
     '''
@@ -41,12 +50,15 @@ def run(cfg):
     out_summary_file = readset + '.duplex.summary.txt'
     out_detail_file  = readset + '.duplex.detail.summary.txt'
     
-    metric_vals = [0]*NUM_METRICS_TOTAL
+    metric_vals     = [0]*NUM_METRICS_TOTAL
 
     IN = pysam.AlignmentFile(inbam,"rb")
 
     duplex_by_umi = defaultdict(lambda:defaultdict(int))
-    umi_reads = defaultdict(lambda:defaultdict(int))
+    umi_reads     = defaultdict(lambda:defaultdict(int))
+
+    usable_umi_rpu = []
+    duplex_umi_rpu = []
 
     for read in IN:
         umi =  read.get_tag(cfg.tagNameUmi)
@@ -101,12 +113,14 @@ def run(cfg):
             continue
         
         if duplex_by_umi[umi]['CC'] >= 4 or duplex_by_umi[umi]['TT'] >= 4:
+            usable_umi_rpu.append(duplex_by_umi[umi]['CC']/2 + duplex_by_umi[umi]['TT']/2) # divide by 2 for read fragments
             metric_vals[NUM_UMIS_ATLEAST_2_CC_OR_TT_READ_FRAGS] += 1
         
         if duplex_by_umi[umi]['CC'] >= 6 or duplex_by_umi[umi]['TT'] >= 6:
             metric_vals[NUM_UMIS_ATLEAST_3_CC_OR_TT_READ_FRAGS] += 1
             
         if duplex_by_umi[umi]['CC'] >= 4 and duplex_by_umi[umi]['TT'] >= 4:
+            duplex_umi_rpu.append(duplex_by_umi[umi]['CC']/2 + duplex_by_umi[umi]['TT']/2) # divide by 2 for read fragments
             metric_vals[DUPLEX_UMIS] += 1 # UMIs with CC >= 2 read frag and TT >= 2 read frag
             
         num_CC = 0 if duplex_by_umi[umi]['CC'] < 4 else duplex_by_umi[umi]['CC'] # treat as if no CC if < 2 read frag support for duplex
@@ -143,12 +157,26 @@ def run(cfg):
     
     assert metric_vals[DUPLEX_UMIS] > 0, "Zero Duplex UMIs !"
 
+    assert metric_vals[NUM_UMIS_ATLEAST_2_CC_OR_TT_READ_FRAGS] == len(usable_umi_rpu), "Read accounting error !"
+    assert metric_vals[DUPLEX_UMIS] == len(duplex_umi_rpu), "Read accounting error !"
 
     metric_vals[DUPLEX_RATE] =  round(float(metric_vals[DUPLEX_UMIS]) / metric_vals[TOTAL_UMIS],2)
     # round some other values before printing
     metric_vals[PERC_OF_UMIS_WITH_1_READ_FRAG] = round(float(umis_with_1_readfrag)/metric_vals[TOTAL_UMIS],2)*100
     metric_vals[PERC_OF_UMIS_WITH_2_READ_FRAGS] = round(float(umis_with_2_readfrag)/metric_vals[TOTAL_UMIS],2)*100
     metric_vals[PERC_OF_UMIS_WITH_3_READ_FRAGS] = round(float(umis_with_3_readfrag)/metric_vals[TOTAL_UMIS],2)*100
+
+    # get percentiles read frags per UMI for usable and duplex UMIs
+    usable_umi_rpu  = np.array(usable_umi_rpu)
+    duplex_umi_rpu  = np.array(duplex_umi_rpu)
+    metric_vals[MEAN_USABLE_UMI_RPU] = round(np.mean(usable_umi_rpu),2)
+    metric_vals[PERCENTILE_USABLE_UMI_RPU_25] = round(np.percentile(usable_umi_rpu,25,overwrite_input=True),2) # overwrite_input : array will get sorted only the first time
+    metric_vals[PERCENTILE_USABLE_UMI_RPU_50] = round(np.percentile(usable_umi_rpu,50),2)
+    metric_vals[PERCENTILE_USABLE_UMI_RPU_75] = round(np.percentile(usable_umi_rpu,75),2)
+    metric_vals[MEAN_DUPLEX_UMI_RPU] = round(np.mean(duplex_umi_rpu),2)
+    metric_vals[PERCENTILE_DUPLEX_UMI_RPU_25] = round(np.percentile(duplex_umi_rpu,25,overwrite_input=True),2)
+    metric_vals[PERCENTILE_DUPLEX_UMI_RPU_50] = round(np.percentile(duplex_umi_rpu,50),2)
+    metric_vals[PERCENTILE_DUPLEX_UMI_RPU_75] = round(np.percentile(duplex_umi_rpu,75),2)
 
     all_metrics = [
         (str(metric_vals[NUM_UMIS_NN_ONLY]), "UMIs with only NN"),
@@ -167,7 +195,15 @@ def run(cfg):
         (str(metric_vals[DUPLEX_RATE]), "Duplex Rate (Duplex UMIs/Total UMI)"),
         (str(metric_vals[NUM_UMIS_ALL_TT_1_READ_FRAG]), "UMIs with all TT (1 read frag UMIs)"),
         (str(metric_vals[NUM_UMIS_ALL_CC_1_READ_FRAG]), "UMIs with all CC (1 read frag UMIs)"),
-        (str(metric_vals[NUM_UMIS_BOTH_CC_AND_TT_1_READ_FRAG_EACH]),"UMIs with both CC and TT (1 read frag CC and TT)")
+        (str(metric_vals[NUM_UMIS_BOTH_CC_AND_TT_1_READ_FRAG_EACH]),"UMIs with both CC and TT (1 read frag CC and TT)"),
+        (str(metric_vals[MEAN_USABLE_UMI_RPU]),"read fragments per usable UMI, mean"),
+        (str(metric_vals[PERCENTILE_USABLE_UMI_RPU_25]),"read fragments per usable UMI, 25th percentile"),
+        (str(metric_vals[PERCENTILE_USABLE_UMI_RPU_50]),"read fragments per usable UMI, 50th percentile"),
+        (str(metric_vals[PERCENTILE_USABLE_UMI_RPU_75]),"read fragments per usable UMI, 75th percentile"),
+        (str(metric_vals[MEAN_DUPLEX_UMI_RPU]),"read fragments per usable Duplex UMI, mean"),
+        (str(metric_vals[PERCENTILE_DUPLEX_UMI_RPU_25]),"read fragments per usable Duplex UMI, 25th percentile"),
+        (str(metric_vals[PERCENTILE_DUPLEX_UMI_RPU_50]),"read fragments per usable Duplex UMI, 50th percentile"),
+        (str(metric_vals[PERCENTILE_DUPLEX_UMI_RPU_75]),"read fragments per usable Duplex UMI, 75th percentile")
     ]    
     summary_metrics = [
         (str(metric_vals[DUPLEX_UMIS]), "usable Duplex UMIs (>= 2 read frags CC and TT)"),
