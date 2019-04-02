@@ -5,12 +5,17 @@ python run examples
 -------------------
 The top level script run_qiaseq_dna.py process reads in fastq format to produce an annotated vcf along with relevant UMI and read level metrics. Variants are called using smCounter. The smCounter-v1 variant calling procedure is described here:
 
-[Detecting very low allele fraction variants using targeted DNA sequencing and a novel molecular barcode-aware variant caller", BMC Genomics, 2017 18:5](https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-016-3425-4)
+[Detecting very low allele fraction variants using targeted DNA sequencing and a novel molecular barcode-aware variant caller, BMC Genomics, 2017 18:5](https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-016-3425-4)
 
 The smCounter variant caller uses a statistical model that requires both raw sequencer base calls and identification of unique input molecules using the UMI tag and the genome position of the random fragmentation site.
 
-smCounter-v2 publication is available here :
-https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty790/5091498
+smCounter-v2 is described in this publication:
+
+[smCounter2: an accurate low-frequency variant caller for targeted sequencing data with unique molecular identifiers, Bioinformatics, September 06 2018](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty790/5091498)
+
+We are actively developing smCounter-v2 to support Duplex variant calling as well, the method is desribed in the below publication:
+
+[Targeted Single Primer Enrichment Sequencing with Single End Duplex-UMI, Scientific Reports 9, Article number: 4810, 2019](https://www.nature.com/articles/s41598-019-41215-z)
 
 There are additional scripts under misc_workflow/ which contain the following :
 
