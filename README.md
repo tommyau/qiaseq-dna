@@ -11,7 +11,7 @@ The smCounter variant caller uses a statistical model that requires both raw seq
 
 smCounter-v2 is described in this publication:
 
-[smCounter2: an accurate low-frequency variant caller for targeted sequencing data with unique molecular identifiers, Bioinformatics, September 06 2018](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty790/5091498)
+[smCounter2: an accurate low-frequency variant caller for targeted sequencing data with unique molecular identifiers, Bioinformatics, 06 September 2018](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty790/5091498)
 
 We are actively developing smCounter-v2 to support Duplex variant calling as well, the method is desribed in the below publication:
 
