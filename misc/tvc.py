@@ -394,6 +394,10 @@ def smCounterFilter(cfg,vc):
     # get params
     readSet = cfg.readSet
     print("tvc: start smCounterFilter")
+    
+    if not os.path.exists(readSet + ".smCounter.cut.txt"):
+        print("smCounter.cut.txt file not detected. No variant filtering will be applied")
+        return -1
 
     # store TVC primitives in hash - all have PASS flag
     tvcPrimitives = set()
@@ -404,6 +408,7 @@ def smCounterFilter(cfg,vc):
             tvcPrimitives.add(key)
     print("tvc: TVC primitive variants: {}".format(len(tvcPrimitives)))
 
+   
     # loop over smCounter variants, for each check if all primitives are in the TVC primitives hash
     lowQSuffix = ".smCounter.GT12PI" if vc.lower() == "v1" else ".smCounter.lowQ"
 

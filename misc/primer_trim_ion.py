@@ -7,8 +7,9 @@ import edlib
 import cutadapt.adapters
 import time
 import cPickle as pickle
+
 # our modules
-from umi_filter import reverseComplement
+from core.umi_filter import reverseComplement
 
 '''
 To do :

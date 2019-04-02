@@ -24,7 +24,23 @@ def run(readSet,paramFile):
         cfg.numCores = str(cpu_count())
      
     # convert some params to boolean
-    cfg.deleteLocalFiles = cfg.deleteLocalFiles.lower() == "true"
+    if "outputDetail" in cfg.__dict__:
+        cfg.outputDetail = cfg.outputDetail.lower() == "true"
+    else:
+        cfg.outputDetail = False
+    if "multimodal" in cfg.__dict__:
+        cfg.multimodal = cfg.multimodal.lower() == "true"
+    else:
+        cfg.multimodal = False
+    if "duplex" in cfg.__dict__:
+        cfg.duplex = cfg.duplex.lower() == "true"
+    else:
+        cfg.duplex = False
+    if "deleteLocalFiles" in cfg.__dict__:        
+        cfg.deleteLocalFiles = cfg.deleteLocalFiles.lower() == "true"
+    else:
+        cfg.deleteLocalFiles = False
+
  
     # return config object
     return cfg

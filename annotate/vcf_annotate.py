@@ -7,13 +7,14 @@ def run(cfg, vcfFileIn, vcfFileOut,vc, tumorNormal):
     #-------------------------------
     assert vc in ["v1","v2"],"Invalid smCounter version : {} specified !".format(vc)
     # get params
-    javaExe     = cfg.javaExe
-    snpEffPath  = cfg.snpEffPath
-    snpEffConfig= cfg.snpEffConfig
-    dbSnpFile   = cfg.dbSnpFile
-    cosmicFile  = cfg.cosmicFile
-    clinVarFile = cfg.clinVarFile
-    readSet     = cfg.readSet
+    javaExe      = cfg.javaExe
+    snpEffPath   = cfg.snpEffPath
+    snpEffConfig = cfg.snpEffConfig
+    snpEffData   = cfg.snpEffData
+    dbSnpFile    = cfg.dbSnpFile
+    cosmicFile   = cfg.cosmicFile
+    clinVarFile  = cfg.clinVarFile
+    readSet      = cfg.readSet
     logFile = readSet + ".vcf_annotate.snpEffSift.log"
        
     # snpEff eff (NOTE: removed the "-t" option for multi-thread operation, due to multiple customer cases of "java.util.ConcurrentModificationException")
@@ -21,6 +22,7 @@ def run(cfg, vcfFileIn, vcfFileOut,vc, tumorNormal):
     cmd = javaExe + " -Xmx6G" \
     + " -jar " + snpEffPath + "snpEff.jar " \
     + " -c " + snpEffConfig \
+    + " -configOption data.dir=" + snpEffData \
     + " -noLog -v -noStats -noMotif -noNextProt GRCh37.75 " \
     + vcfFileIn \
     + " > " + readSet + ".temp0.vcf" \

@@ -22,11 +22,10 @@ samtoolsMem = 2500M
 outputDetail = True
 
 # prep module - read preparation (common region trimming) params
-trimScript = /srv/qgen/code/qiaseq-dna/core/prep_trim.py
-primer3Bases = 8
+primer3Bases  = 8
 
 # geneome file
-genomeFile = /srv/qgen/data/genome/ucsc.hg19.fa
+genomeFile = /srv/qgen/data/genome/hg19/ucsc.hg19.fa
 
 # umi module
 endogenousLenMin = 15
@@ -44,6 +43,7 @@ vcfComplexGapMax = 3
 # variant annotation
 snpEffPath   = /opt/conda/share/snpeff-4.2-0/
 snpEffConfig = /opt/conda/share/snpeff-4.2-0/snpEff.config
+snpEffData   = /srv/qgen/data/annotation/snpEff/
 dbSnpFile    = /srv/qgen/data/annotation/common_all_20160601.vcf.gz
 cosmicFile   = /srv/qgen/data/annotation/CosmicAllMuts_v69_20140602.vcf.gz
 clinVarFile  = /srv/qgen/data/annotation/clinvar_20160531.vcf.gz
@@ -60,7 +60,7 @@ minBQ = 25
 minMQ = 50 
 hpLen = 8 
 mismatchThr = 6.0 
-mtThreshold = 0.8
+consThr = 0.8
 minAltUMI = 3
 maxAltAllele = 2
 primerDist = 2 

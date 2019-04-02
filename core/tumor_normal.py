@@ -13,7 +13,6 @@ import sys
 import warnings
 
 # our modules
-sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 smcounter_v2 = __import__("qiaseq-smcounter-v2.vcf")
 
 # some constants, learned from existing datasets
@@ -402,9 +401,9 @@ def tumorNormalVarFilter(cfg):
 
     # re-run smCounter vcf creation module
     smcounter_v2.vcf.makeVcf(
-        './', tempFile1, readSetTumor, cfg.genomeFile, tumorNormal = True)
+        './', tempFile1, readSetTumor, cfg.genomeFile, isDuplex = False, tumorNormal = True)
     smcounter_v2.vcf.makeVcf(
-        './', tempFile2, readSetNormal, cfg.genomeFile, tumorNormal = True)
+        './', tempFile2, readSetNormal, cfg.genomeFile, isDuplex = False, tumorNormal = True)
 
 
 def runCopyNumberEstimates(cfg):
