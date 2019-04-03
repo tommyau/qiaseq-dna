@@ -33,6 +33,7 @@ endogenousLenMin = 15
 # SAM tag names
 tagNameUmiSeq    = mi
 tagNameUmi       = Mi
+tagNameDuplex    = Du
 tagNamePrimer    = pr
 tagNamePrimerErr = pe
 tagNameResample  = re

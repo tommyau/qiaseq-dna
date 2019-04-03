@@ -64,7 +64,7 @@ def run(cfg, paramFile, vc):
         makeLowPIFile(readSet,smCounterThreshold)
     else:
         if cfg.duplex:
-            cfgSmCounter["duplexTag"] = cfg.duplexTagName
+            cfgSmCounter["duplexTag"] = cfg.tagNameDuplex
         cfgSmCounter["rpu"      ] = cfg.readsPerUmi  # this comes from metrics.umi_frags module
         cfgSmCounter["runPath"] = os.getcwd()
         sm_counter_v2.run.main(cfgSmCounter)
