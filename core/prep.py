@@ -24,7 +24,9 @@ def runReadTrimmer(cfg):
           "--seqtype dna --umi-len 12 --common-seq-len 11 " \
           "--min-primer-side-len 25 --min-umi-side-len 1 --tagname-primer {pr} " \
           "--tagname-primer-error {pe} --tagname-umi {mi} "
-    
+
+    if cfg.instrument.lower() == "nextseq":
+        cmd = cmd + "--is-nextseq "
     if cfg.duplex:
         cmd = cmd + "--tagname-duplex {du} --is-duplex --is-phased-adapters ".format(du = cfg.tagNameDuplex)
     if cfg.multimodal:
