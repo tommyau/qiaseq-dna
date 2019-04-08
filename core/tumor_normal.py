@@ -137,6 +137,8 @@ def parseSmCounterAllFile(readSet):
                 refUMI = int(sUMT_G)
             elif REF[0] == "C":
                 refUMI = int(sUMT_C)
+            elif len(REF) == 1 and REF[0] == "N":
+                continue # ignore sites with reference base N
             else:
                 raise Exception("tumor_normal: LogicalError. Could not discern correct reference base and umi count.")
             allVars[key].refUMI  = refUMI
