@@ -41,7 +41,7 @@ def run(readSet,paramFile):
     else:
         cfg.deleteLocalFiles = False
     if "instrument" not in cfg.__dict__: # IonTorrent, or 
-        cfg,instrument = "N/A"           # say the user forgot to specify this for Illumina - Use MiSeq as default
+        cfg.instrument = "N/A"           # say the user forgot to specify this for Illumina - Use MiSeq as default
  
     # return config object
     return cfg
