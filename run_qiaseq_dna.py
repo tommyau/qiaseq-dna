@@ -161,12 +161,12 @@ def run_tumor_normal(readSet,paramFile,vc):
         print("--"*20)
 
     ## Create cplx,anno.txt/vcf and sum.all files
-    numVariants = core.tumor_normal.getNumVariants(tumor)
-    post_smcounter_work(numVariants,tumor, cfg, tumorNormal=True)
-    print("--"*20)
     numVariants = core.tumor_normal.getNumVariants(normal)
     cfg = core.run_config.run(normal,paramFile)
-    post_smcounter_work(numVariants,normal, cfg, tumorNormal=True)
+    post_smcounter_work(numVariants, normal, cfg, tumorNormal=True)
+    print("--"*20)
+    numVariants = core.tumor_normal.getNumVariants(tumor)
+    post_smcounter_work(numVariants, tumor, cfg, tumorNormal=True)
     print("--"*20)
 
     ## Run old variant substraction code if using v1
@@ -176,7 +176,7 @@ def run_tumor_normal(readSet,paramFile,vc):
         cfg = core.run_config.run(tumor,paramFile)
         core.tumor_normal.removeNormalVariants(cfg)
 
-    ## Run Quandico for CNV    
+    ## Run Quandico for CNV ; Note - cfg corresponds to tumor here
     core.tumor_normal.runCopyNumberEstimates(cfg)
 
     # close log file
