@@ -29,7 +29,7 @@ import annotate.vcf_complex
 import annotate.vcf_annotate
 
 #--------------------------------------------------------------------------------------
-# call input molecules, build consenus reads, align to genome, trim primer region
+# trim primer and adapters, align to genome, mark UMIs, call variants using smCounter
 #--------------------------------------------------------------------------------------
 def run(args,tumorNormal):
     readSet, paramFile, vc = args
@@ -165,6 +165,7 @@ def run_tumor_normal(readSet,paramFile,vc):
     cfg = core.run_config.run(normal,paramFile)
     post_smcounter_work(numVariants, normal, cfg, tumorNormal=True)
     print("--"*20)
+    cfg = core.run_config.run(tumor,paramFile)
     numVariants = core.tumor_normal.getNumVariants(tumor)
     post_smcounter_work(numVariants, tumor, cfg, tumorNormal=True)
     print("--"*20)
