@@ -157,7 +157,7 @@ def run_tumor_normal(readSet,paramFile,vc):
     if vc == 'v2': # use new TN filter
         print("--"*20)
         cfg = core.run_config.run(tumor,paramFile)
-        core.tumor_normal.tumorNormalVarFilter(cfg)
+        core.tumor_normal.tumorNormalVarFilter(cfg, normal, tumor)
         print("--"*20)
 
     ## Create cplx,anno.txt/vcf and sum.all files
@@ -175,7 +175,7 @@ def run_tumor_normal(readSet,paramFile,vc):
         print("--"*20)
         print('Warning: Doing naive substraction of normal variants from tumor. Please use smCounter-v2  for newer Tumor-Normal variant Filter')
         cfg = core.run_config.run(tumor,paramFile)
-        core.tumor_normal.removeNormalVariants(cfg)
+        core.tumor_normal.removeNormalVariants(cfg, normal, tumor)
 
     ## Run Quandico for CNV ; Note - cfg corresponds to tumor here
     core.tumor_normal.runCopyNumberEstimates(cfg)

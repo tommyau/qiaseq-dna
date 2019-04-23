@@ -316,11 +316,11 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, isTumor):
     OUT.close()
 
 
-def tumorNormalVarFilter(cfg):
+def tumorNormalVarFilter(cfg, normal, tumor):
     ''' Filter Tumor variants
     '''
-    readSetNormal =  cfg.readSetMatchedNormal
-    readSetTumor  =  cfg.readSet
+    readSetNormal =  normal
+    readSetTumor  =  tumor
     umiCutoff     =  int(cfg.umiCutoff) # umi cutoff for F.E.T
     pValCutoff    =  float(cfg.pValCutoff) # cutoff for adjusted p values from F.E.T
     tumorPurity   =  float(cfg.tumorPurity)
@@ -515,11 +515,11 @@ def runCopyNumberEstimates(cfg):
     subprocess.check_call(cmd, shell=True)
     
 
-def removeNormalVariants(cfg):
+def removeNormalVariants(cfg, normal, tumor):
     ''' Remove normal variants from tumor vcf
     '''
-    readSetNormal = cfg.readSetMatchedNormal
-    readSetTumor = cfg.readSet
+    readSetNormal = normal
+    readSetTumor  = tumor
 
     # do nothing if zero variants from tumor read set
     if not os.path.isfile(readSetTumor + ".smCounter.anno.txt"):
