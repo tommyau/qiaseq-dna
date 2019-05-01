@@ -114,6 +114,9 @@ def parseSmCounterAllFile(readSet):
 
             key = (CHROM, POS, REF, ALT)
 
+            if sVMF == '.': # ignore sites with no UMI coverage
+                continue
+
             sVMF = float(sVMF)/100
 
             QUAL = logpval if logpval != 'NA' else '0.00'
