@@ -247,13 +247,14 @@ def benjaminiHotchbergCorrection(pvals):
     return pAdjusted[np.argsort(sorted_indices)]
 
 
-def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, isTumor):
+def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, tumorAllVars, isTumor):
     ''' Update Filter column for variants in smCounter all.txt file
     Add a new column with adjPval info
     :param str readSet
     :param str outFile
-    :param Variant Obj tumorVarsFiltered
-    :param defaultdict(list) tumorHomRefVars
+    :param defaultdict(Variant Obj) tumorVarsFiltered : All variants where TN FET test was done
+    :param defaultdict(list) tumorHomRefVars : Homozygous Reference tumor variants
+    :param defaultdict(Variant Obj) tumorAllVars : All parsed tumor variants 
     :param bool isTumor
     '''
     OUT = open(outFile, 'w')
@@ -280,7 +281,6 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, isTumor):
                     pass
                 else:
                     variantKey = normalKey # update variantKey to point to normal Het variant used to represent this site
-                    assert variantKey in tumorVarsFiltered, "LogicalError!"
 
         if variantKey in tumorVarsFiltered:
             adjPval   = tumorVarsFiltered[variantKey].adjPval
@@ -298,6 +298,8 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, isTumor):
                     newFltr = fltr
 
                 row[-1] = newFltr
+        else:
+            assert tumorAllVars[variantKey].pval is None, "LogicalError for variant: {}".format(variantKey)
         
         if adjPval != '.':
             # convert pvalue to phred scale
@@ -363,9 +365,6 @@ def tumorNormalVarFilter(cfg, normal, tumor):
     # filter entries with no pvals
     tumorVarsFiltered  = {k:v for k,v in tumorAllVars.items() if v.pval != None}
 
-    # free some mem
-    del(tumorAllVars)
-
     # store ordered pvals and variants
     tumorPvals   = []
     tumorVarKeys = []
@@ -390,9 +389,9 @@ def tumorNormalVarFilter(cfg, normal, tumor):
 
     # parse and update all.txt file
     tempFile1 = readSetTumor + ".smCounter.all.temp.txt"
-    updateFilter(readSetTumor, tempFile1, tumorVarsFiltered, tumorHomRefVars, isTumor = True)
+    updateFilter(readSetTumor, tempFile1, tumorVarsFiltered, tumorHomRefVars, tumorAllVars, isTumor = True)
     tempFile2 = readSetNormal + ".smCounter.all.temp.txt"
-    updateFilter(readSetNormal, tempFile2, tumorVarsFiltered, tumorHomRefVars, isTumor = False)
+    updateFilter(readSetNormal, tempFile2, tumorVarsFiltered, tumorHomRefVars, tumorAllVars, isTumor = False)
 
     # backup smCounter all files
     shutil.copyfile(readSetTumor + ".smCounter.cut.txt",
