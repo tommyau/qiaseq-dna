@@ -69,7 +69,7 @@ def run_tumor_normal(readSet,paramFile,vc):
     #run((tumor,paramFile,vc))    
     ## Additional analysis steps
     cfg = core.run_config.run(tumor,paramFile)
-    core.tumor_normal.tumorNormalVarFilter(cfg)
+    core.tumor_normal.tumorNormalVarFilter(cfg, normal, tumor)
     # close log file
     core.run_log.close()    
  
