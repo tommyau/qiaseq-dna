@@ -72,7 +72,8 @@ def runReadTrimmer(cfg):
 
             if not minimal: # sum up some 'reads fragments dropped,' metrics to 1 generic bucket
                 if metricname.startswith("read fragments dropped,"):
-                    dropped += int(val)
+                    if val != 'NA':
+                        dropped += int(val)
     
         OUT.write(out["read fragments total"])
         OUT.write("{val}\t{metric}\n".format(val = dropped, metric = generic_reads_dropped_label))
