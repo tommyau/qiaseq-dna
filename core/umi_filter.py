@@ -337,7 +337,11 @@ def run(cfg,bamFileIn):
  
     # compute on-target SPE priming specificity as a percent of all reads not dropped after universal trimming
     readPairsTotal = readPairCounts[NUM_PRIMER_SIDE_NOT_MAPPED] + readPairCounts[NUM_RANDOM_SIDE_NOT_MAPPED] + readPairsDropped +  + readPairsPrimerFound
-    readPairsPrimerFoundOnTargetPctOfAll = 100.000 * readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] / readPairsTotal
+    readPairsPrimerFoundOnTargetPctOfAll = 100.000 * readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] / readPairsTotal if readPairsTotal > 0 else 0.00
+
+    # stop pipeline if very few reads on-target
+    if readPairsPrimerFoundOnTargetPctOfAll < 5 and readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
+        raise UserWarning("< 5 percent or < 50 on-target read fragments found for read set: {}".format(readSet))
     
     # report read accounting, detail version
     fileout = open(filePrefixOut + ".detail.summary.txt", "w")
@@ -373,11 +377,7 @@ def run(cfg,bamFileIn):
     fileName = filePrefixOut + ".no-primer.txt"
     cmd = "sort -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -t\| -T./ --parallel={1} {0} > {0}.tmp".format(fileName,numCores)
     subprocess.check_call(cmd, shell=True)
-    os.rename(fileName + ".tmp", fileName)
-    
-    # stop pipeline if very few reads on-target
-    if readPairsPrimerFoundOnTargetPctOfAll < 5 and readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
-        raise UserWarning("< 5 percent or < 50 on-target read fragments found for read set: {}".format(readSet))
+    os.rename(fileName + ".tmp", fileName)    
   
     # report completion
     print("umi_filter: done")
