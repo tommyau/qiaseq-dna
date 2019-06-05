@@ -57,7 +57,7 @@ RUN pip3 install cython edlib
 
 ################ R packages ################
 RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile
-RUN Rscript -e "install.packages(c('plyr','tidyverse','magrittr','data.table'))"
+RUN Rscript -e "install.packages(c('plyr','tidyverse','magrittr','data.table', 'rmutil', 'poibin'))"
 
 ################ Update openjdk ################
 ## note : picard gets updated to match jdk version
