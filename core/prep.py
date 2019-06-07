@@ -30,7 +30,7 @@ def runReadTrimmer(cfg):
     if cfg.duplex:
         cmd = cmd + "--tagname-duplex {du} --is-duplex --is-phased-adapters ".format(du = cfg.tagNameDuplex)
     if cfg.multimodal:
-        cmd = cmd + "--is-multimodal "
+        cmd = cmd + "--is-multimodal --umi-len-alt 10"
     
     cmd = cmd.format(
         trimmer = readTrimmerPath,
