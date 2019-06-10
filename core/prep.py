@@ -21,7 +21,7 @@ def runReadTrimmer(cfg):
           "--out-metrics {summary} --out-r1 {outR1} --out-r2 {outR2} " \
           "--check-primer-side --primer3-bases-R1 {primer3R1} " \
           "--primer3-bases-R2 {primer3R2} --ncpu {ncpu} --primer-col 3 " \
-          "--seqtype dna --umi-len 12 --common-seq-len 11 " \
+          "--seqtype dna --umi-len 12 --common-seq-len 15 " \
           "--min-primer-side-len 25 --min-umi-side-len 1 --tagname-primer {pr} " \
           "--tagname-primer-error {pe} --tagname-umi {mi} "
 
