@@ -340,7 +340,7 @@ def run(cfg,bamFileIn):
     readPairsPrimerFoundOnTargetPctOfAll = 100.000 * readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] / readPairsTotal if readPairsTotal > 0 else 0.00
 
     # stop pipeline if very few reads on-target
-    if readPairsPrimerFoundOnTargetPctOfAll < 5 and readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
+    if readPairsPrimerFoundOnTargetPctOfAll < 5 or readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
         raise UserWarning("< 5 percent or < 50 on-target read fragments found for read set: {}".format(readSet))
     
     # report read accounting, detail version
