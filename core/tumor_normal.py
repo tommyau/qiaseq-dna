@@ -41,32 +41,64 @@ class Variant(object):
         # for HomRef Tumor Variants, store the corresponding normal variant key
         self.normalVarKey = None
 
+    @staticmethod
+    def isHet(vmf):
+        ''' Returns if a variant is Heterozygous
+            Used for identifying normal het sites
 
-    def classifyVar(self, nvmf, p, cutoff):
-        ''' Used for tumor variants
-        :param float nvmf : Normal variant UMI allele frequency
-        :param float p    : Tumor Purity
-        :param float cutoff : pValue cutoff for FET
+        :param float vmf: The variant allele frequency
+        :rtype: bool
+        '''
+        return _a_ <= vmf <= _b_
 
-        :returns Variant classification, i.e. Germline_Risk, Somatic, LOH (Loss of Heterozygocity)
-        :rtype string
+    @staticmethod
+    def isHomAlt(tumorVmf, normalVmf, p):
+        ''' Returns if a variant is Homozygous for the alt allele
+            Used for tumor variants
+
+        :param float tumorVmf: The tumor variant allele frequency
+        :param float normalVmf: The corresponding normal variant allele frequency
+        :param float p: Tumor Purity
+        :rtype: bool
+        '''
+        return tumorVmf > (p * _c_ + (1 - p) * normalVmf)
+
+    @staticmethod
+    def isHomRef(tumorVmf, normalVmf, p):
+        ''' Returns if a variant is tending to Homozygous for the ref allele
+            Used for tumor variants
+        :param float tumorVmf: The tumor variant allele frequency
+        :param float normalVmf: The corresponding normal variant allele frequency
+        :param float p: Tumor Purity
+        :rtype: bool
+        '''
+        return tumorVmf < (p * (1 - _c_) + (1 - p) * normalVmf)
+
+    def classifyLOH(self, nvmf, p):
+        ''' Check if the tumor variant is because of Loss of Heterozygocity
+        :param float nvmf: The normal variant allele frequency
+        :param float p: Tumor Purity
+        '''
+        if isHomAlt(self.vmf, normalVmf, p) and isHet(nvmf):
+            self.varclass = 'LOH'
+            assert self.vmf > nvmf, "Logical Error !"
+
+        elif isHomRef(self.vmf, normalVmf, p) and isHet(nvmf):
+            assert self.vmf < nvmf, "Logical Error !"
+            self.varclass = 'LOH_HomRef'
+
+
+    def classifyGermlineOrSomatic(self, nvmf, cutoff):
+        ''' Classify a tumor variant as Germline of somatic
+        :param float nvmf: The normal variant allele frequency
+        :param float cutoff : adjusted pValue cutoff from FET
         '''
         if self.adjPval >= cutoff:
             self.varclass = 'Germline_Risk'
 
         else:
-            if self.vmf > nvmf:
-                if (self.vmf > (p * _c_ + (1 - p) * nvmf) and \
-                    (_a_ <= nvmf <= _b_)):
-                    self.varclass = 'LOH'
-                else:
-                    self.varclass = 'Somatic'
-            else:                
-                if self.vmf < (p * (1 - _c_) + (1 - p) * nvmf) and \
-                   _a_ <= nvmf <= _b_:
-                    self.varclass = 'LOH_HomRef'
-                else:
-                    self.varclass = 'Germline_Risk'
+            assert self.vmf > nvmf, "Logical Error !"
+            self.varclass = 'Somatic'
 
 
 def getNumVariants(readSet):
@@ -152,7 +184,7 @@ def parseSmCounterAllFile(readSet):
 
             sUMT = int(sUMT)
             refAlleleFreq = float(refUMI)/sUMT
-            if(refAlleleFreq >= _c_ and fQUAL < 2.00): # check if variant is homozygous ref
+            if(refAlleleFreq >= _c_ and fQUAL < 2.00): # check if variant is homozygous ref - To capture sites with < 3 Alt UMIs
                 key2 = (CHROM, POS, REF)
                 homRefVars[key2].append(copy.deepcopy(allVars[key]))
 
@@ -171,7 +203,7 @@ def handleTumorHomRefVars(normalAllVars, tumorAllVars, tumorHomRefVars):
 
         if variantKey not in tumorAllVars:
 
-            if (_a_ <= normalAllVars[variantKey].vmf <= _b_): # check if normal is Het
+            if Variant.isHet(normalAllVars[variantKey].vmf): # check if normal is Het
                 chrom, pos, ref, alt = variantKey
                 key2 = (chrom, pos, ref)
 
@@ -200,21 +232,18 @@ def fet(variantKey, tumorAllVars, normalAllVars):
     if variantKey not in tumorAllVars:
         return (-1, -1, variantKey)
 
-    # log(pval) cutoffs
+    # log(pval) cutoff
     cutoff = 6
-    minCutoff = {"INDEL":2,"SNP":2} ## Cutoff for low PI file
 
-    qualNormal   =  normalAllVars[variantKey].qual
     qualTumor    =  tumorAllVars[variantKey].qual
 
-    if qualNormal >= cutoff or \
-       qualTumor >= cutoff:
+    if qualTumor >= cutoff:
 
         refUMITumor  =  tumorAllVars[variantKey].refUMI
         altUMITumor  =  tumorAllVars[variantKey].altUMI
         refUMINormal =  normalAllVars[variantKey].refUMI
         altUMINormal =  normalAllVars[variantKey].altUMI
-   
+
         # do F.E.T
         oddsRatio, pval = scipy.stats.fisher_exact(
             [[refUMITumor, refUMINormal], [altUMITumor, altUMINormal]])
@@ -257,17 +286,20 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, tumorAllV
     :param defaultdict(Variant Obj) tumorAllVars : All parsed tumor variants 
     :param bool isTumor
     '''
-    OUT = open(outFile, 'w')
-    
+    OUT = open(outFile, "w")
+    OUT_debug = open(readSet + ".tumor_normal.all.txt", "w")
+
     for row in iterateSmCounterAllFile(readSet):
         if row[0] == "CHROM":
             row.append('TNFetPval')
             OUT.write("\t".join(row))
             OUT.write("\n")
+            OUT_debug.write("\t".join(row))
+            OUT_debug.write("\n")
             continue
 
         variantKey = (row[0], row[1], row[2], row[3])
-        fltr      = row[-1]
+        fltr       = row[-1]
         
         adjPval = '.'
         oddsRatio = '.'
@@ -285,12 +317,11 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, tumorAllV
         if variantKey in tumorVarsFiltered:
             adjPval   = tumorVarsFiltered[variantKey].adjPval
             oddsRatio = tumorVarsFiltered[variantKey].oddsRatio
-            assert adjPval != None and oddsRatio != None, "Unexpected Variant FET info!"
+            varclass  = tumorVarsFiltered[variantKey].varclass
+            assert varclass is not None, "Unexpected Variant Filter!"
+            assert (adjPval is not None and oddsRatio is not None) or varclass.startswith('LOH'), "Unexpected Variant info!"
 
-            if isTumor:                
-                varclass  = tumorVarsFiltered[variantKey].varclass
-                assert varclass != None, "Unexpected Variant Filter!"
-
+            if isTumor:
                 if varclass != 'Somatic':
                     newFltr = fltr + ';' + varclass if fltr != 'PASS' \
                               else varclass
@@ -299,7 +330,7 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, tumorAllV
 
                 row[-1] = newFltr
         else:
-            assert tumorAllVars[variantKey].pval is None, "LogicalError for variant: {}".format(variantKey)
+            assert tumorAllVars[variantKey].pval is None and tumorAllVars[variantKey].varclass is None, "LogicalError for variant: {}".format(variantKey)
         
         if adjPval != '.':
             # convert pvalue to phred scale
@@ -315,10 +346,16 @@ def updateFilter(readSet, outFile, tumorVarsFiltered, tumorHomRefVars, tumorAllV
             TNFetPval = "%s"%(adjPval)            
         
         row.append(TNFetPval)
+
+        if variantKey in tumorVarsFiltered:
+            OUT_debug.write("\t".join(row))
+            OUT_debug.write("\n")
+
         OUT.write("\t".join(row))
         OUT.write("\n")
 
     OUT.close()
+    OUT_debug.close()
 
 
 def tumorNormalVarFilter(cfg, normal, tumor):
@@ -344,6 +381,16 @@ def tumorNormalVarFilter(cfg, normal, tumor):
     # normalAllVars and tumorAllVars will be updated
     handleTumorHomRefVars(normalAllVars, tumorAllVars, tumorHomRefVars)
 
+    # flag LOH variants first
+    LOHVars = set()
+    for key in normalAllVars:
+        # check if variant in tumor
+        if key in tumorAllVars:
+            nvmf = normalAllVars[key].vmf
+            tumorAllVars[key].classifyLOH(nvmf, tumorPurity)
+            if tumorAllVars[key].varclass is not None: # flagged as LOH
+                LOHVars.add(key)
+
     # perform F.E.T and store pvalue and oddsRatio
     # This takes about 30 secs for ~ 1500 variants
     # I have left the fet function call as below to make it amenable to bring
@@ -357,13 +404,14 @@ def tumorNormalVarFilter(cfg, normal, tumor):
     # to have globals and clutter up code.
     
     for key in normalAllVars:
-        pval, oddsRatio, key = fet(key, tumorAllVars, normalAllVars)
-        if(pval != -1): # either tumor or normal var below cutoff, or variant not present in tumor all file
-            tumorAllVars[key].pval = pval
-            tumorAllVars[key].oddsRatio = oddsRatio
+        if key not in LOHVars: # skip LOH variants
+            pval, oddsRatio, key = fet(key, tumorAllVars, normalAllVars)
+            if(pval != -1): # either tumor qual below cutoff, or variant not present in tumor all file
+                tumorAllVars[key].pval = pval
+                tumorAllVars[key].oddsRatio = oddsRatio
 
     # filter entries with no pvals
-    tumorVarsFiltered  = {k:v for k,v in tumorAllVars.items() if v.pval != None}
+    tumorVarsFiltered  = {k:v for k,v in tumorAllVars.items() if v.pval is not None} # - variants flagged as LOH not here !
 
     # store ordered pvals and variants
     tumorPvals   = []
@@ -374,7 +422,7 @@ def tumorNormalVarFilter(cfg, normal, tumor):
         tumorVarKeys.append(key)        
 
     # correct for FDR using Benjamini-Hotchberg
-    adjPvals = benjaminiHotchbergCorrection(tumorPvals)    
+    adjPvals = benjaminiHotchbergCorrection(tumorPvals)
     for i,var in enumerate(tumorVarKeys):
         tumorVarsFiltered[var].adjPval = adjPvals[i]
 
@@ -385,7 +433,10 @@ def tumorNormalVarFilter(cfg, normal, tumor):
     # update varClass
     for variantKey in tumorVarsFiltered:
         tumorVarsFiltered[variantKey].classifyVar(
-            normalAllVars[variantKey].vmf, tumorPurity, pValCutoff)
+            normalAllVars[variantKey].vmf, pValCutoff)
+
+    # filter again - this time keep all variants which have a varclass, i.e. flagged as either LOH/LOH_HomRef/Germline_Risk/Somatic
+    tumorVarsFiltered  = {k:v for k,v in tumorAllVars.items() if v.varclass is not None}
 
     # parse and update all.txt file
     tempFile1 = readSetTumor + ".smCounter.all.temp.txt"
