@@ -79,11 +79,11 @@ class Variant(object):
         :param float nvmf: The normal variant allele frequency
         :param float p: Tumor Purity
         '''
-        if isHomAlt(self.vmf, normalVmf, p) and isHet(nvmf):
+        if self.isHomAlt(self.vmf, normalVmf, p) and self.isHet(nvmf):
             self.varclass = 'LOH'
             assert self.vmf > nvmf, "Logical Error !"
 
-        elif isHomRef(self.vmf, normalVmf, p) and isHet(nvmf):
+        elif self.isHomRef(self.vmf, normalVmf, p) and self.isHet(nvmf):
             assert self.vmf < nvmf, "Logical Error !"
             self.varclass = 'LOH_HomRef'
 
