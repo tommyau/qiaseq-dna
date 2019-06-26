@@ -432,7 +432,7 @@ def tumorNormalVarFilter(cfg, normal, tumor):
 
     # update varClass
     for variantKey in tumorVarsFiltered:
-        tumorVarsFiltered[variantKey].classifyVar(
+        tumorVarsFiltered[variantKey].classifyGermlineOrSomatic(
             normalAllVars[variantKey].vmf, pValCutoff)
 
     # filter again - this time keep all variants which have a varclass, i.e. flagged as either LOH/LOH_HomRef/Germline_Risk/Somatic
