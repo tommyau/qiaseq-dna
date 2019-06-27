@@ -52,7 +52,7 @@ clinVarFile  = /srv/qgen/data/annotation/clinvar_20160531.vcf.gz
 # tumor-normal params
 # umiCutoff not being used currently
 umiCutoff = 10
-pValCutoff = 0.01
+pValCutoff = 0.1
 tumorPurity  = 0.90
 
 # variant caller parameters (these need a separate section)
