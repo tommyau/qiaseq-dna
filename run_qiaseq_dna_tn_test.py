@@ -70,13 +70,14 @@ def run_tumor_normal(readSet,paramFile,vc):
     ## Additional analysis steps
     cfg = core.run_config.run(tumor,paramFile)
     import os
+    import shutil
     # restore from backups if they exist
-    if os.path.exists(readSet + ".smCounter.cut.txt.bak"):
+    if os.path.exists(tumor + ".smCounter.cut.txt.bak"):
         shutil.copyfile(tumor + ".smCounter.cut.txt.bak",
                         tumor + ".smCounter.cut.txt")
         shutil.copyfile(normal + ".smCounter.cut.txt.bak",
                         normal + ".smCounter.cut.txt")
-        shutil.copyfile(tumor + ".smCounter.all.txt,bak",
+        shutil.copyfile(tumor + ".smCounter.all.txt.bak",
                         tumor + ".smCounter.all.txt")
         shutil.copyfile(normal + ".smCounter.all.txt.bak",
                         normal + ".smCounter.all.txt")
