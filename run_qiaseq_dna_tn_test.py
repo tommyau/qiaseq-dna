@@ -69,6 +69,19 @@ def run_tumor_normal(readSet,paramFile,vc):
     #run((tumor,paramFile,vc))    
     ## Additional analysis steps
     cfg = core.run_config.run(tumor,paramFile)
+    import os
+    import shutil
+    # restore from backups if they exist
+    if os.path.exists(tumor + ".smCounter.cut.txt.bak"):
+        shutil.copyfile(tumor + ".smCounter.cut.txt.bak",
+                        tumor + ".smCounter.cut.txt")
+        shutil.copyfile(normal + ".smCounter.cut.txt.bak",
+                        normal + ".smCounter.cut.txt")
+        shutil.copyfile(tumor + ".smCounter.all.txt.bak",
+                        tumor + ".smCounter.all.txt")
+        shutil.copyfile(normal + ".smCounter.all.txt.bak",
+                        normal + ".smCounter.all.txt")
+        
     core.tumor_normal.tumorNormalVarFilter(cfg, normal, tumor)
     # close log file
     core.run_log.close()    
