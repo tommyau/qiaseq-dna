@@ -341,7 +341,7 @@ def run(cfg,bamFileIn):
 
     # stop pipeline if very few reads on-target
     if readPairsPrimerFoundOnTargetPctOfAll < 5 or readPairCounts[NUM_PRIMER_AT_DESIGN_SITE] < 100:
-        raise UserWarning("< 5 percent or < 50 on-target read fragments found for read set: {}".format(readSet))
+        raise UserWarning("< 5 percent or < 100 on-target read fragments found for read set: {}".format(readSet))
     
     # report read accounting, detail version
     fileout = open(filePrefixOut + ".detail.summary.txt", "w")
