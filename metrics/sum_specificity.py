@@ -57,6 +57,7 @@ def run(cfg):
             stacksOffT[primer] = vec[0:10]
    
     # read primers, output read depths
+    seen = set()
     for line in open(cfg.primerFile, "r"):
         (chrom, loc3, direction, primer) = line.strip().split("\t")
         strand = 0 if direction == "L" or direction == "0" else 1
@@ -71,18 +72,30 @@ def run(cfg):
         readsOnT = 0 if key not in siteDepthsOnT else siteDepthsOnT[key]
         outvec.append(readsOnT)
         
-        # add off-target top 10 site read count
-        readsOffT = [0] * 10 if primer not in stacksOffT else [x[0] for x in stacksOffT[primer]]
+        # potential double count if one sums entries in this file, therefore report off-target count only for 1 primer if multiple primers with same sequence
+        duplicate_primer_seq = primer in seen
+
+        if duplicate_primer_seq:
+            readsOffT = [0] * 10
+        else:
+            # add off-target top 10 site read count
+            readsOffT = [0] * 10 if primer not in stacksOffT else [x[0] for x in stacksOffT[primer]]
+
         outvec.append(sum(readsOffT))
         outvec.extend(readsOffT)
         
         # add off-target top 10 site locations
-        sitesOffT = ["_"] * 10 if primer not in stacksOffT else [" ".join([str(y) for y in x[1:]]) for x in stacksOffT[primer]]
+        if duplicate_primer_seq:
+            sitesOffT = ["_"] * 10
+        else:
+            sitesOffT = ["_"] * 10 if primer not in stacksOffT else [" ".join([str(y) for y in x[1:]]) for x in stacksOffT[primer]]
         outvec.extend(sitesOffT)
         
         # write to disk
         fileout.write("|".join((str(x) for x in outvec)))
         fileout.write("\n")
-  
+
+        seen.add(primer) # have seen this primer seq - ignore off target counts and sites for same primer sequence if it appears again
+
     # done
-    fileout.close()      
+    fileout.close()
