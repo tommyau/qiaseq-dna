@@ -33,7 +33,39 @@ dnaComplementTranslation = string.maketrans("ATGC", "TACG")
 def reverseComplement(seq):
     seq = seq[::-1]
     return seq.translate(dnaComplementTranslation)
- 
+
+def identifyAppropriatePrimer(primerInfo, primerSeq, primer3Bases, alignLoc, alignChrom, alignStrand):
+    '''
+    '''
+    tmp = primerInfo.split(",")
+    primer_ = None
+    for e in tmp:
+        (primerChrom, primerStrand, loc3, primerLen) = e.split("-")
+        loc3 = int(loc3)
+        primerStrand = int(primerStrand)
+        primer = primerSeq[(primerChrom,primerStrand,loc3)]
+        primerLen = int(primerLen)
+        loc5 = loc3 - primerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1
+
+        # bases to adjust for removed bases from 5' of primer
+        primerOffset = primerLen if (primer3Bases == -1 or primer3Bases > primerLen) else primer3Bases
+        primerOffsetAbs = primerOffset
+        if primerStrand == 1:
+            primerOffset = -primerOffsetAbs
+
+        # check if near a primer site
+        for offset in range(-5,6):    #(0,1,-1):
+            designLoc = alignLoc + offset + primerOffset
+            key = (alignChrom, alignStrand, designLoc)
+            if key in primerSeq:
+                primer_ = primerSeq[key]               
+                break
+
+        if primer_ is not None:
+            break
+
+    return primerChrom, loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_
+
 #---------------------------------------------------------------------
 # main function
 #---------------------------------------------------------------------
@@ -190,28 +222,8 @@ def run(cfg,bamFileIn):
         if softClip2 > 3 or softClip1 > (maxSoftClipBp1 - primerErrBp):
             readPairCounts[NUM_TOO_MUCH_SOFTCLIP] += 1
             continue
-            
-        # get UMI sequence and primer info from "mi" and "pi" tags
-        readId = read1.qname
-        umiSeq = read1.get_tag(tagNameUmiSeq)
-        primerInfo = read1.get_tag(tagNamePrimer)
-        if primerInfo == "-1":
-            primer = None
-            primerLen = 0
-        else:
-            (chrom,primerStrand,loc3,primerLen) = primerInfo.split("-")
-            loc3 = int(loc3)
-            primerStrand = int(primerStrand)
-            primer = primerSeq[(chrom,primerStrand,loc3)]
-            primerLen = int(primerLen)
-            loc5 = loc3 - primerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1         
-         
-        # bases to adjust for removed bases from 5' of primer
-        primerOffset = primerLen if (primer3Bases == -1 or primer3Bases > primerLen) else primer3Bases
-        primerOffsetAbs = primerOffset
-        if primerStrand == 1:
-            primerOffset = -primerOffsetAbs
-         
+
+
         # get some alignment info from R1 read (SPE primer side)
         readSeq     = read1.seq
         alignChrom  = chrom1
@@ -222,16 +234,20 @@ def run(cfg,bamFileIn):
         else:
             alignLoc = read1.aend - 1 #  0-based position of the 5' end of the read
             alignCigar.reverse()
-         
-        # check if near a primer site     
+            
+        # get UMI sequence and primer info from "mi" and "pi" tags
+        readId = read1.qname
+        umiSeq = read1.get_tag(tagNameUmiSeq)
+        primerInfo = read1.get_tag(tagNamePrimer)
+
         primer_ = None
-        for offset in range(-5,6):    #(0,1,-1):
-            designLoc = alignLoc + offset + primerOffset
-            key = (alignChrom, alignStrand, designLoc)
-            if key in primerSeq:
-                primer_ = primerSeq[key]               
-                break
-          
+        if primerInfo == "-1":
+            primer = None
+            primerLen = 0
+        else:
+            # multiple primers with same sequence are comma delimeted in prInfo. Get the appropriate one based on alignment.            
+            primerChrom, loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_ = identifyAppropriatePrimer(primerInfo, primerSeq, primer3Bases, alignLoc, alignChrom, alignStrand)
+
         # if primer not found
         if primer == None:               
             if primer_ == None:
@@ -273,7 +289,7 @@ def run(cfg,bamFileIn):
         cigar2 = "*" if read2.cigarstring == None else read2.cigarstring
         
         # write output (NOTE: field position hard coded in Linux sort below!)
-        outvec = (chrom, loc5, primerStrand, primer, umiSeq, isIntendedSite, alignChrom, alignStrand, alignLocRand, alignLoc, readId, read1.pos, read1.aend, cigar1, read2.pos, read2.aend, cigar2)
+        outvec = (primerChrom, loc5, primerStrand, primer, umiSeq, isIntendedSite, alignChrom, alignStrand, alignLocRand, alignLoc, readId, read1.pos, read1.aend, cigar1, read2.pos, read2.aend, cigar2)
         fileout.write("|".join((str(x) for x in outvec)))
         fileout.write("\n")      
         

@@ -52,12 +52,12 @@ def run(cfg):
         strand = 0 if direction == "L" or direction == "0" else 1
         loc3 = int(loc3)
         loc5 = loc3 - len(primer) + 1 if strand == 0 else loc3 + len(primer) - 1
-        primers[primer] = (strand, chrom, loc5, loc3, [])
+        primers[(primer, chrom, strand, loc5)] = (loc3, [])
   
     # get MTs and supporting read counts from disk
     for line in open(readSet + ".umi_mark.for.sum.primer.txt", "r"):
         (chrom, strand, umiLoc, umi, numReads, numAlignments, mtReadIdx, isResample, fragLen, primer, primerLoc5) = line.strip().split("|")
-        primers[primer][-1].append(int(numReads))
+        primers[(primer, chrom, int(strand), int(primerLoc5))][-1].append(int(numReads))
   
     # define metric names
     metricNames = ("UMIs", "read fragments"
@@ -75,17 +75,17 @@ def run(cfg):
  
     # for each primer, get read per MT metrics
     mtListAllPrimers = []
-    for (primer, primerVec) in primers.iteritems():
+    for (key, val) in primers.iteritems():
     
-        # unpack primer vec
-        (strand, chrom, loc5, loc3, mtList) = primerVec
+        # unpack key
+        (primer, chrom, strand, loc5) = key
+        (loc3, mtList) = val
         
         # get read-per-barcode metrics
         metricVals = getRpmtMetrics(mtList)
         
         # output
-        outrow = [readSet, primer]
-        outrow.extend(primerVec[0:-1])  # dropping the MT list now
+        outrow = [readSet, primer, strand, chrom, loc5, loc3]
         outrow.extend(metricVals)
         outrow = (str(x) for x in outrow)
         fileout.write("|".join(outrow))
