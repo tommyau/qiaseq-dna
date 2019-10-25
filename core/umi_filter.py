@@ -34,17 +34,18 @@ def reverseComplement(seq):
     seq = seq[::-1]
     return seq.translate(dnaComplementTranslation)
 
-def identifyAppropriatePrimer(prInfo):
+def identifyAppropriatePrimer(primerInfo, primerSeq, primer3Bases, alignLoc, alignChrom, alignStrand):
     '''
     '''
     tmp = primerInfo.split(",")
     primer_ = None
-    for (chrom, primerStrand, loc3, primerLen) in tmp.split("-"):
+    for e in tmp:
+        (primerChrom, primerStrand, loc3, primerLen) = e.split("-")
         loc3 = int(loc3)
         primerStrand = int(primerStrand)
-        primer = primerSeq[(chrom,primerStrand,loc3)]
+        primer = primerSeq[(primerChrom,primerStrand,loc3)]
         primerLen = int(primerLen)
-        loc5 = loc3 - pirmerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1
+        loc5 = loc3 - primerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1
 
         # bases to adjust for removed bases from 5' of primer
         primerOffset = primerLen if (primer3Bases == -1 or primer3Bases > primerLen) else primer3Bases
@@ -63,7 +64,7 @@ def identifyAppropriatePrimer(prInfo):
         if primer_ is not None:
             break
 
-    return loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_
+    return primerChrom, loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_
 
 #---------------------------------------------------------------------
 # main function
@@ -244,7 +245,12 @@ def run(cfg,bamFileIn):
             primer = None
             primerLen = 0
         else:
-            loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_ = identifyAppropriatePrimer(prInfo) # multiple primers with same sequence are comma delimeted in prInfo. Get the appropriate one based on alignment.
+            # multiple primers with same sequence are comma delimeted in prInfo. Get the appropriate one based on alignment.            
+            primerChrom, loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_ = identifyAppropriatePrimer(primerInfo, primerSeq, primer3Bases, alignLoc, alignChrom, alignStrand)
+
+        if primer is not None and len(primerInfo.split(",")) > 1:
+            tagValToKeep = (alignChrom, strand, loc3, primerLen
+            read1.set_tag(tagNamePrimer, )
                  
         # if primer not found
         if primer == None:               
