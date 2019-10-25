@@ -143,13 +143,45 @@ def clipRead(read, aligmentReoriented, cigar, basesGenomeNeeded):
             
         # done
         return dropFlag
-  
+
+def keepCorrectPrimer(primerInfo, primer3Bases, alignLoc, alignChrom, alignStrand):
+    ''' Primers with the same sequence are stored in the pr tag comma delimeted. Keep the correct one only
+    based on alignment info
+    '''
+    tmp = primerInfo.split(",")
+    found = False
+    for e in tmp:
+        (primerChrom, primerStrand, loc3, primerLen) = e.split("-")
+        loc3 = int(loc3)
+        primerStrand = int(primerStrand)
+        primerLen = int(primerLen)
+        loc5 = loc3 - primerLen + 1 if primerStrand == 0 else loc3 + primerLen - 1
+
+        # bases to adjust for removed bases from 5' of primer
+        primerOffset = primerLen if (primer3Bases == -1 or primer3Bases > primerLen) else primer3Bases
+        primerOffsetAbs = primerOffset
+        if primerStrand == 1:
+            primerOffset = -primerOffsetAbs
+        
+        # check if near a primer site
+        for offset in range(-5,6):    #(0,1,-1):
+            designLoc = alignLoc + offset + primerOffset
+            if (alignChrom, alignStrand, designLoc) == (primerChrom, primerStrand, loc3):
+                found = True
+                break
+
+    if found:
+        return e
+    else:
+        raise Exception("Could not find an appropriate primer when choosing between 2 or more primers having the same sequence.")
+
 #-----------------------------------------------------------------------
 # main
 #-----------------------------------------------------------------------
 def run(cfg, bamFileIn, bamFileOut, resampleOnly):
     print("primer_clip starting...")
     deleteLocalFiles = cfg.deleteLocalFiles
+    primer3Bases     = int(cfg.primer3Bases)
     
     # open files
     bamIn  = pysam.AlignmentFile(bamFileIn , "rb")
@@ -196,12 +228,28 @@ def run(cfg, bamFileIn, bamFileOut, resampleOnly):
   
         # loop over R1 then R2
         for read in (read1, read2):
-        
+
+            if read.is_read1: # Note : we iterate over (R1,R2) so designSite is already appropriately set here for R2.
+                update_pr_tag = False
+                # get tag containing primer design location
+                designSite = read.get_tag("pr")
+                if len(designSite.split(",")) > 1: # handle case with multiple primers with same sequence
+                    alignChrom = bamIn.getrname(read.tid)
+                    alignStrand = 1 if read.is_reverse else 0
+                    if alignStrand == 0:
+                        alignLoc = read.pos
+                    else:
+                        alignLoc = read.aend - 1 # 0-based position of the 5' end of the read
+                    
+                    designSite = keepCorrectPrimer(designSite, primer3Bases, alignLoc, alignChrom, alignStrand)
+                    update_pr_tag = True
+
+            if update_pr_tag:
+                read.set_tag("pr", designSite)
+
             mapQ.append(read.mapping_quality)
    
-            # get tag containing primer design location
-            designSite = read.get_tag("pr")
-            
+
             # parse primer design site
             (chrom, strand, loc3, primerLen) = designSite.split("-")
             primerLen = int(primerLen)
