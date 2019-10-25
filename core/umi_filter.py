@@ -248,10 +248,6 @@ def run(cfg,bamFileIn):
             # multiple primers with same sequence are comma delimeted in prInfo. Get the appropriate one based on alignment.            
             primerChrom, loc3, primerStrand, primer, primerLen, loc5, primerOffset, primerOffsetAbs, primer_ = identifyAppropriatePrimer(primerInfo, primerSeq, primer3Bases, alignLoc, alignChrom, alignStrand)
 
-        if primer is not None and len(primerInfo.split(",")) > 1:
-            tagValToKeep = (alignChrom, strand, loc3, primerLen
-            read1.set_tag(tagNamePrimer, )
-                 
         # if primer not found
         if primer == None:               
             if primer_ == None:
@@ -293,7 +289,7 @@ def run(cfg,bamFileIn):
         cigar2 = "*" if read2.cigarstring == None else read2.cigarstring
         
         # write output (NOTE: field position hard coded in Linux sort below!)
-        outvec = (chrom, loc5, primerStrand, primer, umiSeq, isIntendedSite, alignChrom, alignStrand, alignLocRand, alignLoc, readId, read1.pos, read1.aend, cigar1, read2.pos, read2.aend, cigar2)
+        outvec = (primerChrom, loc5, primerStrand, primer, umiSeq, isIntendedSite, alignChrom, alignStrand, alignLocRand, alignLoc, readId, read1.pos, read1.aend, cigar1, read2.pos, read2.aend, cigar2)
         fileout.write("|".join((str(x) for x in outvec)))
         fileout.write("\n")      
         
