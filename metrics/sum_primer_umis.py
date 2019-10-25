@@ -57,7 +57,7 @@ def run(cfg):
     # get MTs and supporting read counts from disk
     for line in open(readSet + ".umi_mark.for.sum.primer.txt", "r"):
         (chrom, strand, umiLoc, umi, numReads, numAlignments, mtReadIdx, isResample, fragLen, primer, primerLoc5) = line.strip().split("|")
-        primers[(primer, chrom, strand, primerLoc5)][-1].append(int(numReads))
+        primers[(primer, chrom, int(strand), int(primerLoc5))][-1].append(int(numReads))
   
     # define metric names
     metricNames = ("UMIs", "read fragments"
@@ -85,8 +85,7 @@ def run(cfg):
         metricVals = getRpmtMetrics(mtList)
         
         # output
-        outrow = [readSet, primer]
-        outrow.extend(strand, chrom, loc5, loc3)  # dropping the MT list now
+        outrow = [readSet, primer, strand, chrom, loc5, loc3]
         outrow.extend(metricVals)
         outrow = (str(x) for x in outrow)
         fileout.write("|".join(outrow))
