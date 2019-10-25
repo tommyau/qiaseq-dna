@@ -170,10 +170,10 @@ def keepCorrectPrimer(primerInfo, primer3Bases, alignLoc, alignChrom, alignStran
                 found = True
                 break
 
-    if found:
-        return e
-    else:
-        raise Exception("Could not find an appropriate primer when choosing between 2 or more primers having the same sequence.")
+        if found:
+            return e
+
+    raise Exception("Could not find an appropriate primer when choosing between 2 or more primers having the same sequence.")
 
 #-----------------------------------------------------------------------
 # main
