@@ -18,17 +18,25 @@ outputDetail = True
 # prep - read preparation (common region trimming)
 trimScript = /srv/qgen/code/qiaseq-dna/core/prep_trim.py
 
+# prep module - read preparation (common region trimming) params
+primer3Bases  = 8
+
 # genome file
-genomeFile = /srv/qgen/data/genome/ucsc.hg19.fa  ; this has some ALT haplotype mask hacks, and has NC_012920 instead of UCSC chrM (NC_001807)
+genomeFile = /srv/qgen/data/genome/hg19/ucsc.hg19.fa  ; this has some ALT haplotype mask hacks, and has NC_012920 instead of UCSC chrM (NC_001807)
 
 # umi - putative original molecule calling
 endogenousLenMin = 15
 
 # SAM tag names - used by several modules
-tagNameUmiSeq   = mi
-tagNameUmi      = Mi
-tagNamePrimer   = pr
-tagNameResample = re
+tagNameUmiSeq    = mi
+tagNameUmi       = Mi
+tagNameDuplex    = Du
+tagNamePrimer    = pr
+tagNamePrimerErr = pe
+tagNameResample  = re
+
+# platform
+platform = Illumina
 
 # parameters specific to a read set - one section per read set 
 [NEB_S2]
