@@ -46,7 +46,7 @@ def run(readSet, paramFile):
     # make consensus reads using Fulcrum Genomics fgbio tools, and merge primer info to fastq header comment
     bamFileIn    = readSet + ".primer_clip.bam"
     primerFileIn = readSet + ".umi_merge.primers.txt"
-    core.consensus.run(cfg,bamFileIn,primerFileIn)
+    misc.consensus.run(cfg,bamFileIn,primerFileIn)
     
     # align consensus reads to genome using BWA MEM
     readFileIn1 = readSet + ".consensus.R1.fastq"
@@ -57,7 +57,7 @@ def run(readSet, paramFile):
     # filter consensus read alignments that might cause trouble for SNP/indel calling and/or primer region clipping
     bamFileIn  = readSet + ".consensus.align.bam"
     bamFileOut = readSet + ".consensus.filter.bam"
-    core.consensus.filter(cfg,bamFileIn,bamFileOut)
+    misc.consensus.filter(cfg,bamFileIn,bamFileOut)
     
     # soft clip primer regions from consensus reads
     bamFileIn  = readSet + ".consensus.filter.bam"
