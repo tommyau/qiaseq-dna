@@ -69,6 +69,7 @@ def run(cfg,bamFileIn,primerFileIn):
     + " 2>> " + readSet + ".consensus.shell.log" 
     subprocess.check_call(cmd, shell=True)
     os.remove(readSet + ".consensus.temp1.bam")
+    os.remove(readSet + ".consensus.temp1.header.sam")
  
     # filter consensus reads using Fulcrum Genomics fgbio FilterConsensusReads
     cmd = javaExe + " -jar " \
@@ -99,6 +100,7 @@ def run(cfg,bamFileIn,primerFileIn):
     + " 2>> " + readSet + ".consensus.shell.log"
     subprocess.check_call(cmd, shell=True)
     os.remove(readSet + ".consensus.temp3.bam")
+    os.remove(readSet + ".consensus.temp3.bai")
     print("consensus: done sorting unaligned BAM from FilterConsensusReads by readId")
     
     # convert unaligned SAM to FASTQ format
