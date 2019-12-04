@@ -1,4 +1,6 @@
 import sys
+import os
+import argparse
 
 # our modules
 import core.run_log
@@ -15,13 +17,13 @@ import core.samtools
 #--------------------------------------------------------------------------------------
 # call input molecules, build consenus reads, align to genome, trim primer region
 #--------------------------------------------------------------------------------------
-def run(readSet, paramFile):
+def run(readSet, paramFile, args):
 
     # initialize logger
     core.run_log.init(readSet)
  
     # read run configuration file to memory
-    cfg = core.run_config.run(readSet,paramFile)
+    cfg = core.run_config.run(readSet,paramFile, args)
  
     # trim 3' ends of both reads, and extract UMI sequence
     core.prep.run(cfg)
@@ -76,6 +78,13 @@ def run(readSet, paramFile):
 # main program for running from shell 
 #-------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    readSet   = sys.argv[1]
-    paramFile = sys.argv[2] if len(sys.argv) == 3 else "run-params.txt"
-    run(readSet, paramFile)
+    parser = argparse.ArgumentParser(description='run consensus pipeline')
+    parser.add_argument('--genomeFile', required=False, default='/srv/qgen/data/genome/hg19/ucsc.hg19.fa')
+    parser.add_argument('--numCores', required=False, default=0)
+    parser.add_argument('--samtoolsMem', required=False, default='2500M')
+    parser.add_argument('--readFile1', required=True)
+    parser.add_argument('--readFile2', required=True)
+    parser.add_argument('--primerFile', required=True)
+    parser.add_argument('--readSet', required=True)
+    args = parser.parse_args()
+    run(args.readSet, os.path.join(os.path.dirname(__file__), "run_consensus.params.txt"), args)
