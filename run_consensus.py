@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import os
 import argparse
@@ -79,7 +80,7 @@ def run(readSet, paramFile, args):
 #-------------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='run consensus pipeline')
-    parser.add_argument('--genomeFile', required=False, default='/srv/qgen/data/genome/hg19/ucsc.hg19.fa')
+    parser.add_argument('--genomeFile', required=False, default='/ref/ucsc.hg19.fasta')
     parser.add_argument('--numCores', required=False, default=0)
     parser.add_argument('--samtoolsMem', required=False, default='2500M')
     parser.add_argument('--readFile1', required=True)

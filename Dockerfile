@@ -22,7 +22,7 @@ RUN apt-get -y update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ################ Install various version specific 3rd party tools ################
-RUN conda install bedtools=2.25.0 htslib=1.3.1 cutadapt=1.10 picard=1.97 snpeff=4.2 bwa=0.7.15
+RUN conda install java-jdk=8.0.92 bedtools=2.25.0 htslib=1.3.1 cutadapt=1.10 snpeff=4.2 bwa=0.7.15 scipy=1.2.1 MySQL-python=1.2.5 openpyxl=2.4.0 pysam=0.9.0
 RUN wget https://storage.googleapis.com/qiaseq-dna/lib/ssw.tar.gz \
     https://storage.googleapis.com/qiaseq-dna/lib/fgbio-0.1.4-SNAPSHOT.jar \
     -P /srv/qgen/bin/ && \
@@ -31,7 +31,6 @@ RUN wget https://storage.googleapis.com/qiaseq-dna/lib/ssw.tar.gz \
 
 ################ Install python modules ################
 ## Install some modules with conda
-RUN conda install scipy MySQL-python openpyxl pysam=0.9.0
 RUN pip install edlib
 ## Download and install 3rd party libraries
 RUN wget https://storage.googleapis.com/qiaseq-dna/lib/py-editdist-0.3.tar.gz \
@@ -58,10 +57,6 @@ RUN pip3 install cython edlib
 ################ R packages ################
 RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile
 RUN Rscript -e "install.packages(c('plyr','tidyverse','magrittr','data.table'))"
-
-################ Update openjdk ################
-## note : picard gets updated to match jdk version
-RUN conda install -c cyclus java-jdk=8.45.14
 
 ################ Add latest samtools version for sort by Tag feature ################
 RUN wget https://github.com/samtools/samtools/releases/download/1.5/samtools-1.5.tar.bz2 -O /srv/qgen/bin/downloads/samtools-1.5.tar.bz2 && \
@@ -91,18 +86,8 @@ RUN cpan File::Slurp
 ## R
 RUN Rscript -e "install.packages(c('MASS','ggplot2','gridExtra','naturalsort','scales','ggplot2','extrafont'))"
 
-################ TVC binaries ################
-RUN mkdir -p /srv/qgen/bin/TorrentSuite/
-RUN wget https://storage.googleapis.com/qiaseq-dna/lib/TorrentSuite/tmap \
-    https://storage.googleapis.com/qiaseq-dna/lib/TorrentSuite/tvc \
-    -P /srv/qgen/bin/TorrentSuite/ && \
-    chmod 775 /srv/qgen/bin/TorrentSuite/tmap /srv/qgen/bin/TorrentSuite/tvc
-## vcflib
-RUN cd /srv/qgen/bin/downloads && git clone --recursive https://github.com/vcflib/vcflib.git && \
-    cd vcflib && make && mkdir -p /srv/qgen/bin/vcflib/bin/ && cp bin/* /srv/qgen/bin/vcflib/bin/ && \
-    cd / && rm -rf /srv/qgen/downloads/vcflib/
-
 ################ Update Environment Variables ################
 ENV PYTHONPATH $PYTHONPATH:/opt/conda/lib/python2.7/site-packages/:/srv/qgen/code/qiaseq-dna/
-ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/srv/qgen/bin/ssw/src/
-
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/srv/qgen/bin/ssw/src/:/opt/conda/jre/lib/amd64/
+ENV PATH=$PATH:/srv/qgen/code/qiaseq-dna/
+WORKDIR /output
